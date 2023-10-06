@@ -68,12 +68,24 @@ class IPFS_COL_Node extends Data {
       })
   }
 
-  static async traverse(cid, fn, keys=null){
-    console.log(`called .traverse with typeof fn = ${typeof fn}`);
-    return await this.read(cid, keys).then(async instance => {
-      console.log(`have read instance: `, instance.value);
-      return fn(instance, keys, fn)
-    })
+  static async traverse(cid, fn=()=>{}, keys=null){
+    const context = this;
+    const haveTraversed = new Set();
+    async function recurse(cid, fn, keys){
+      //console.log(`called .traverse with cid ${cid.toString()}`);
+      return await context.read(cid, keys).then(async instance => {
+        if(!haveTraversed.has(cid.toString())){
+          haveTraversed.add(cid.toString());
+          for(const link of Object.keys(instance.links)){
+            if(!link.endsWith('_last'))
+              instance.value[link] = await recurse(instance.links[link], fn, keys);
+          }
+          fn(instance);
+        }
+        return instance
+      })
+    }
+    return recurse(cid, fn, keys)
   }
 
   async delete(keys){
