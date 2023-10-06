@@ -1,0 +1,38 @@
+{
+  "name": "@brianebert/tss",
+  "version": "1.0.0",
+  "description": "a safe and simple way (tao) to use ipfs",
+  "main": "index.js",
+  "scripts": {
+    "test": "change this later"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brianebert/tss.git"
+  },
+  "keywords": [
+    "IPFS",
+    "ipfs",
+    "relational",
+    "DAG",
+    "libsodium",
+    "stellar",
+    "Stellar"
+  ],
+  "author": "Brian Ebert",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/brianebert/tss/issues"
+  },
+  "type": "module",
+  "dependencies": {
+    "@ipld/dag-cbor": "^9.0.0",
+    "@ipld/dag-json": "10.0.1",
+    "@ipld/dag-pb": "^4.0.3",
+    "@stellar/freighter-api": "^1.7.0",
+    "libsodium-wrappers": "^0.7.13",
+    "multiformats": "^11.0.2",
+    "stellar-base": "^8.2.2"
+  },
+  "homepage": "https://github.com/brianebert/tss#readme"
+}
