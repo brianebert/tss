@@ -32,21 +32,20 @@ class IPFS_COL_Node extends Data {
    */
   static async bubbleBubble(node, keys){
     async function bubble(node, parent, keys){
-    /* if node.name not in parent's links, put it there
-     * if node.name in parent's links and the hashes are equal, delete node and references to it
-     * if node.name in parent's links with a different hash, update the hash
-     *
-     * then update my_previous_value link on parent and
-     * if node.parent.parent exists, recurse upward
-     *
-     */
+      /* if node.name not in parent's links, put it there
+       * if node.name in parent's links and the hashes are equal, delete node and references to it
+       * if node.name in parent's links with a different hash, update the hash
+       *
+       * then update my_previous_value link on parent and
+       * if node.parent.parent exists, recurse upward
+       *
+       */
       const value = Object.assign({}, parent.value);
       if(node.name in parent.links && !node?.cid)
         delete value[node.name];
       else
         value[node.name] = node.cid;
       value[`${parent.name}_last`] = parent.cid;
-
       parent.value = value;
       await parent.write(parent.name, keys);
 
@@ -72,17 +71,15 @@ class IPFS_COL_Node extends Data {
     const context = this;
     const haveTraversed = new Set();
     async function recurse(cid, fn, keys){
-      //console.log(`called .traverse with cid ${cid.toString()}`);
       return await context.read(cid, keys).then(async instance => {
         if(!haveTraversed.has(cid.toString())){
           haveTraversed.add(cid.toString());
-          for(const link of Object.keys(instance.links)){
+          for(const link of Object.keys(instance.links))
             if(!link.endsWith('_last'))
               instance.value[link] = await recurse(instance.links[link], fn, keys);
-          }
           fn(instance);
         }
-        return instance
+        return instance.cid
       })
     }
     return recurse(cid, fn, keys)
@@ -99,7 +96,9 @@ class IPFS_COL_Node extends Data {
   async insert(node, linkName, keys=null){
     await Promise.all([this.ready, node.ready]);
     //console.log(`linking ${linkName} to ${this.name}`);
-    this.value[linkName] = node.cid;
+    const value = Object.assign({}, this.value);
+    value[linkName] = node.cid;
+    this.value = value;
     node.parents.push(this);
     return node.write(node?.name?node.name:'', keys)
                .then(writeResult => IPFS_COL_Node.bubbleBubble(node, keys)) 
@@ -109,8 +108,8 @@ class IPFS_COL_Node extends Data {
     console.log(`updating ${this.name} ${keys?'ciphertext':'plaintext'} with: `, updates);
     const value = Object.assign({}, this.value);
     for(let key of Object.keys(value)){
-      console.log(`processing key ${key} of updates: `, updates);
-      if(updates[key])
+      console.log(`processing ${this.name}.value.${key} for updates: `, updates);
+      if(Object.hasOwn(updates, key))
         value[key] = updates[key];
       else {
         //Data.cache.remove(value[key]);  Need Data.read() to cache before calling this.
@@ -122,7 +121,6 @@ class IPFS_COL_Node extends Data {
       value[key] = updates[key];
     console.log(`updating this.value to: `, value);
     this.value = value;
-
     return this.write(this.name, keys)
                .then(writeResult => IPFS_COL_Node.bubbleBubble(this, keys))
   }
