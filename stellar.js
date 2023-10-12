@@ -25,7 +25,7 @@ export class StellarAccount {
     if(!StrKey.isValidEd25519PublicKey(address))
       throw new Error(`StellarAccount requires valid Ed25519 Public Key as arguement.`)
     this.#account = {id: address};
-    //this.#watcher = new MessageWatcher(address, this);
+    this.#watcher = new MessageWatcher(address, this);
   }
 
   get account(){
@@ -188,14 +188,14 @@ export class StellarAccount {
 
   setDataEntry(label, value){
     return StellarAccount.dataEntry(this, label).then(oldValue => {
-      console.log(`${label} value is ${value} and oldValue is: `, oldValue);
+      //console.log(`${label} value is ${value} and oldValue is: `, oldValue);
       let isEqual = value.length === oldValue.length;
       for(let i = 0; i < value.length && isEqual; i++)
         isEqual = value[i] === oldValue[i];
       if(isEqual)
         return oldValue
       else {
-        console.log(`setting ${label} to: `, value)
+        //console.log(`setting ${label} to: `, value)
         return this.tx([Operation.manageData({name: label, value: value})])
                    .then(txResult => this.reload())
                    .then(account => Buffer.from(account.data[label], 'base64'))

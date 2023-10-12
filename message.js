@@ -12,7 +12,7 @@ import {Asset, Operation} from 'stellar-base';
 
 function MessageFilter(payment){
   if(payment.transaction.hash === this.watcher.stopAtTxHash){
-    console.log(`found payment previously marked by MessagesRead token: `, payment);
+    console.log(`found payment ${payment.id} created at ${payment.created_at} and previously marked by MessagesRead token: `);
     return true
   }
   for(const messenger of ['MessageMe', 'ShareData']){
@@ -22,7 +22,7 @@ function MessageFilter(payment){
     }
   }
   if(payment.asset_code === 'MessagesRead' && payment.asset_issuer === this.account.id){
-    console.log(`found memo ${Buffer.from(payment.transaction.memo, 'base64').toString('hex')} with MessagesRead token: `, payment);
+    console.log(`found memo ${Buffer.from(payment.transaction.memo, 'base64').toString('hex')} with MessagesRead created at ${payment.created_at}: `);
     this.watcher.stopAtTxHash = Buffer.from(payment.transaction.memo, 'base64').toString('hex');
   }
   return false
@@ -35,41 +35,42 @@ async function DrainMessageQueue(readerResult){
   //console.log(`draining message queue with context: `, this);
   const decodedTraversed = [];
   for(const message of readerResult.recordQueue){
+    console.log(`draining message queue of ${message.asset_code}, created at ${message.created_at}, with memo ${message.transaction.memo}`);
     switch(message.asset_code){
     case 'MessageMe':{
-      console.log(`draining message queue of MessageMe: `, message);
+      //console.log(`draining message queue of MessageMe: `, message);
       const pk = await(SigningAccount.dataEntry(message.from, 'libsodium_box_pk'));
       const node = await COL_Node.fromCID(SigningAccount.memoToCID(message.transaction.memo), {reader: this.ec25519.sk, writer: pk});
-      const traversed = await COL_Node.traverse(node.cid, {reader: this.ec25519.sk, writer: pk});
-      traversed.message = message;
-      console.log(`traversed message: `, traversed);
-      decodedTraversed.push(traversed);
+      var traversed = await COL_Node.traverse(node.cid, (instance)=>{
+        console.log(`${message.from} sent message to ${message.to}: `, instance.value.message);
+      }, {reader: this.ec25519.sk, writer: pk});
     }
       break;
     case 'ShareData':{
-      console.log(`draining message queue of ShareData: `, message);
+      //console.log(`draining message queue of ShareData: `, message);
       const pk = await SigningAccount.dataEntry(message.from, 'libsodium_kx_pk');
       console.log(`retrieved ${message.from} libsodium_kx_pk: `, pk);
       const rxKey = await Sodium.sharedKeyRx(this.shareKX, pk);
       console.log(`computed shared receive key: `, rxKey);
       const node = await COL_Node.fromCID(SigningAccount.memoToCID(message.transaction.memo), {shared: rxKey});
       console.log(`Decoded : `, node);
-      const traversed = await COL_Node.traverse(node.cid, {shared: rxKey});
-      console.log(`traversed : `, traversed);
-      traversed.message = message;
-      console.log(`traversed message: `, traversed);
-      decodedTraversed.push(traversed);
+      var traversed = await COL_Node.traverse(node.cid, ()=>{}, {shared: rxKey});
     }
       break;
     default:
       throw new Error(`wasn't expecting to get here`)
     }
+    //traversed.message = message;
+    console.log(`traversed from root ${traversed.cid.toString()}: `, traversed.value);
+    decodedTraversed.push(traversed.value);
   }
   if(decodedTraversed.length){
     //console.log(`marking ${decodedTraversed.length} messages read`);
     // sort received oldest to newest (diggers collect them in reverse)
     decodedTraversed.sort((a, b) => Date.parse(a) > Date.parse(b) ? 1 : -1);
+    console.log(`decodedTraversed is `, decodedTraversed);
     const bytes = Buffer.from(decodedTraversed[decodedTraversed.length -1].message.transaction.hash, 'hex');
+    console.log(`bytes is `, bytes);
     console.log(`created msgTxId buffer: `, bytes)
     this.tx([
       Operation.payment({
@@ -77,7 +78,7 @@ async function DrainMessageQueue(readerResult){
         asset: new Asset('MessagesRead', this.account.id), 
         amount: '0.0000001'})
       ], new CID(1, raw, Digest.create(sha256.code, bytes)));
-    this.watcher.callback(decodedTraversed);    
+    this.watcher.callback(decodedTraversed);
   }
   return decodedTraversed
 }

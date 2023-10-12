@@ -54,7 +54,7 @@ export class SigningAccount extends StellarAccount {
       const sig = SigningAccount.sigFromXDR(signedXdr);
       return Sodium.keysFromSig(sig)
         .then(keys => {
-          console.log(`derived keys: `, keys);
+          //console.log(`derived keys: `, keys);
           this.#ec25519 = keys.ec25519;
           this.#shareKX = keys.shareKX;
           // ed25519 seed needs to be extracted for Stellar Keypair
@@ -77,8 +77,8 @@ export class SigningAccount extends StellarAccount {
       myPhrase.sign(kp);
       return Promise.resolve(myPhrase.toXDR())
         .then(theThen.bind(this)).then((keys) => {
-          console.log(`got keys: `, keys);
-          console.log(`and keypair: `, kp);
+          //console.log(`got keys: `, keys);
+          //console.log(`and keypair: `, kp);
             this.#ed25519 = {
             sk: kp.rawSecretKey(),
             pk: kp.rawPublicKey()
@@ -93,7 +93,7 @@ export class SigningAccount extends StellarAccount {
   }
 
   async sharedKeys(account, label){
-    console.log(`deriving shared keys with ${account}.data[${label}]`);
+    //console.log(`deriving shared keys with ${account}.data[${label}]`);
     if(typeof account === 'string' && StrKey.isValidEd25519PublicKey(account))
       return await request(`${HORIZON}/accounts/${account}`).then(response => {
         //console.log(`account response is `, JSON.parse(response));

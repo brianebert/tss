@@ -48,7 +48,6 @@ class IPFS_COL_Node extends Data {
       value[`${parent.name}_last`] = parent.cid;
       parent.value = value;
       await parent.write(parent.name, keys);
-
       return this.bubbleBubble(parent, keys)
     }
 
@@ -75,11 +74,13 @@ class IPFS_COL_Node extends Data {
         if(!haveTraversed.has(cid.toString())){
           haveTraversed.add(cid.toString());
           for(const link of Object.keys(instance.links))
-            if(!link.endsWith('_last'))
-              instance.value[link] = await recurse(instance.links[link], fn, keys);
+            if(!link.endsWith('_last')){
+              const subGraph = await recurse(instance.links[link], fn, keys);
+              instance.value[link] = subGraph.cid;
+            }
           fn(instance);
         }
-        return instance.cid
+        return instance
       })
     }
     return recurse(cid, fn, keys)
