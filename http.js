@@ -104,10 +104,18 @@ export function request(url, options={}, logArray=[]){
     }
     else { // before use this needs to condition options for post
       const req = https.request(url, options, (response) => {
-        let data = '';
-        response.on('data', (chunk) => {
-            data = data + chunk.toString();
-        });
+        let data;
+        if(options?.headers && 'Accept' in options.headers && options.headers.Accept === 'application/vnd.ipld.raw'){
+          data = new Uint8Array();
+          response.on('data', (chunk) => {
+            data = abConcat([data, chunk]);
+          });
+        } else {
+          data = '';
+          response.on('data', (chunk) => {
+              data = data + chunk.toString();
+          });          
+        }
       
         response.on('end', () => {
           if(logArray.length > 0)

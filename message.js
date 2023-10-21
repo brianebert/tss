@@ -3,6 +3,8 @@ import {SigningAccount} from './signing.js';
 import {COL_Node} from './cols.js';
 import * as Sodium from './na.js'
 
+import * as multihashing from 'multihashing-async';
+
 import * as Digest from 'multiformats/hashes/digest';
 import {sha256} from 'multiformats/hashes/sha2';
 import * as raw from 'multiformats/codecs/raw';
@@ -10,18 +12,23 @@ import { CID } from 'multiformats/cid';
 
 import {Asset, Operation} from 'stellar-base';
 
+function abrevId(id){
+  return `${id.slice(0, 5)}...${id.slice(-5)}`
+}
+
 function MessageFilter(payment){
   if(payment.transaction.hash === this.watcher.stopAtTxHash){
-    console.log(`found payment ${payment.id} created at ${payment.created_at} and previously marked by MessagesRead token: `);
+    console.log(`found payment ${payment.id} created at ${payment.created_at} with TxHash ${payment.transaction.id} and previously marked MessagesRead`);
     return true
   }
   for(const messenger of ['MessageMe', 'ShareData']){
     if(payment.asset_code === messenger && payment.asset_issuer === this.account.id){
-      //console.log(`found messenger payment: `, payment);
+      console.log(`found messenger payment ${payment.id} created at ${payment.created_at} and carrying memo ${payment.transaction.memo}`);
       this.watcher.recordQueue.push(payment);
     }
   }
   if(payment.asset_code === 'MessagesRead' && payment.asset_issuer === this.account.id){
+    //console.log(`found memo ${Buffer.from(payment.transaction.memo, 'base64').toString('hex')} with MessagesRead created at ${payment.created_at}: `);
     console.log(`found memo ${Buffer.from(payment.transaction.memo, 'base64').toString('hex')} with MessagesRead created at ${payment.created_at}: `);
     this.watcher.stopAtTxHash = Buffer.from(payment.transaction.memo, 'base64').toString('hex');
   }
@@ -33,51 +40,60 @@ async function DrainMessageQueue(readerResult){
   //  A readerResult contains a recordQueue, recursionDepth of the read, and the reader's current cursor.
   //  The recordQueue is filled by the watcher with filterMyMessages above.
   //console.log(`draining message queue with context: `, this);
+  let traversed;
   const decodedTraversed = [];
   for(const message of readerResult.recordQueue){
-    console.log(`draining message queue of ${message.asset_code}, created at ${message.created_at}, with memo ${message.transaction.memo}`);
+console.log(`draining message queue of ${message.asset_code}, created at ${message.created_at}, with memo ${message.transaction.memo}->${SigningAccount.memoToCID(message.transaction.memo)}`);
     switch(message.asset_code){
     case 'MessageMe':{
-      //console.log(`draining message queue of MessageMe: `, message);
       const pk = await(SigningAccount.dataEntry(message.from, 'libsodium_box_pk'));
       const node = await COL_Node.fromCID(SigningAccount.memoToCID(message.transaction.memo), {reader: this.ec25519.sk, writer: pk});
-      var traversed = await COL_Node.traverse(node.cid, (instance)=>{
-        console.log(`${message.from} sent message to ${message.to}: `, instance.value.message);
-      }, {reader: this.ec25519.sk, writer: pk});
+//console.log(`created node from MessageMe memo: `, node.value);
+      traversed = await COL_Node.traverse(node.cid, ()=>{}/*(instance)=>{
+        console.log(`${abrevId(message.from)} sent message to ${abrevId(message.to)}: `, instance.value.message);
+      }*/, {reader: this.ec25519.sk, writer: pk});
     }
       break;
     case 'ShareData':{
-      //console.log(`draining message queue of ShareData: `, message);
       const pk = await SigningAccount.dataEntry(message.from, 'libsodium_kx_pk');
       console.log(`retrieved ${message.from} libsodium_kx_pk: `, pk);
       const rxKey = await Sodium.sharedKeyRx(this.shareKX, pk);
       console.log(`computed shared receive key: `, rxKey);
       const node = await COL_Node.fromCID(SigningAccount.memoToCID(message.transaction.memo), {shared: rxKey});
       console.log(`Decoded : `, node);
-      var traversed = await COL_Node.traverse(node.cid, ()=>{}, {shared: rxKey});
+      traversed = await COL_Node.traverse(node.cid, ()=>{}, {shared: rxKey});
     }
       break;
     default:
       throw new Error(`wasn't expecting to get here`)
     }
     //traversed.message = message;
-    console.log(`traversed from root ${traversed.cid.toString()}: `, traversed.value);
+    //console.log(`traversed from root ${traversed.cid.toString()}: `, traversed.value);
+    traversed.value.transaction_hash = message.transaction_hash;
     decodedTraversed.push(traversed.value);
   }
   if(decodedTraversed.length){
     //console.log(`marking ${decodedTraversed.length} messages read`);
     // sort received oldest to newest (diggers collect them in reverse)
     decodedTraversed.sort((a, b) => Date.parse(a) > Date.parse(b) ? 1 : -1);
-    console.log(`decodedTraversed is `, decodedTraversed);
-    const bytes = Buffer.from(decodedTraversed[decodedTraversed.length -1].message.transaction.hash, 'hex');
-    console.log(`bytes is `, bytes);
-    console.log(`created msgTxId buffer: `, bytes)
-    this.tx([
+/*console.log(`decodedTraversed, length ${decodedTraversed.length} is `, decodedTraversed);
+console.log(`array with last element has length ${decodedTraversed.slice(-1).length}`);
+console.log(`last element is `, decodedTraversed.slice(-1).pop());
+console.log(`while decodedTraversed length is ${decodedTraversed.length}`);
+console.log(`will make Buffer from: ${decodedTraversed.slice(-1).pop().transaction_hash}`);*/
+    const txHash = Buffer.from(decodedTraversed.slice(-1).pop().transaction_hash, 'hex');
+    if(Buffer.isBuffer(txHash))
+      console.log(`made Buffer of ${txHash.length} bytes for transaction_hash ${txHash.toString('hex')}`);
+    const digest = Digest.create(sha256.code, txHash);
+    console.log(`created hash digest `, digest);
+    const cid = CID.create(1, 0xd1/*raw.code*/, Digest.create(sha256.code, txHash));
+    console.log(`cid ${cid.toString()} is `, cid);
+    await this.tx([
       Operation.payment({
         destination: this.account.id, 
         asset: new Asset('MessagesRead', this.account.id), 
         amount: '0.0000001'})
-      ], new CID(1, raw, Digest.create(sha256.code, bytes)));
+      ], new CID(1, 0xd1/*raw.code*/, Digest.create(sha256.code, txHash)));
     this.watcher.callback(decodedTraversed);
   }
   return decodedTraversed

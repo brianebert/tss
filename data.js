@@ -128,12 +128,15 @@ class Data {
     cid = CID.asCID(cid) ? cid : CID.parse(cid);
     const cached = Data.cache.fetch({cid: cid});
     if(cached){
-      //console.log(`read from cache: `, cached)
+      console.log(`read ${cached.cid.toString()} from cache`);
       return Promise.resolve(cached)
     }
     let bytes = await request(`${IPFS_GATEWAY}/${cid.toString()}`, {headers: {"Accept": "application/vnd.ipld.raw"}});
+//console.log(`have read ${bytes.length} bytes as ${typeof bytes}`);
     bytes = new Uint8Array(bytes);
+//console.log(`have read ${bytes.length} bytes as ${typeof bytes}`);
     if(keys){
+//console.log(`for cid ${cid.toString()} will use codec ${codecForCID(cid).name}`);
       var block = await Block.create({bytes: bytes, cid, codec: codecForCID(cid), hasher});
       bytes = await Data.open(block.bytes, keys);
       block = await Block.decode({bytes: bytes, codec, hasher})

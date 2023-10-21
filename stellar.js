@@ -39,7 +39,7 @@ export class StellarAccount {
   static async dataEntry(account, label){
     if(account instanceof StellarAccount)
       account = account.account.id;
-    console.log(`retrieving data entry for label ${label} on account ${account}`);
+//console.log(`retrieving data entry for label ${label} on account ${account}`);
     return request(`${HORIZON}/accounts/${account}`) 
       .then(response => {
         const dataEntries = JSON.parse(response).data;
