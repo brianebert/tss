@@ -1,9 +1,17 @@
 export class SetOf {
   #equals;
   #members;
+  #readFrom;
   constructor(equals){
     this.#equals = equals;
     this.#members = [];
+    this.#readFrom = true;
+  }
+
+  // setting #readFrom false leaves cache operating, but forces other 
+  // read circuits to run by faking a cache hit (fetch(id)) failure
+  set readFrom(state){
+    this.#readFrom = state
   }
 
   add(proposed){
@@ -20,7 +28,9 @@ export class SetOf {
     //console.log(`SetOf fetch found index:${index} searching cache for: `, id);
     if(index === -1)
       return null
-    return this.#members[index]    
+    if(this.#readFrom)
+      return this.#members[index]
+    return null  
   }
 
   filter(fn){

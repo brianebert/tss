@@ -1,16 +1,15 @@
-import {AccountWatcher, AccountDigger} from './apiReaders.js';
-import {SigningAccount} from './signing.js';
-import {COL_Node} from './cols.js';
-import * as Sodium from './na.js'
-
-import * as multihashing from 'multihashing-async';
-
+import {Asset, Operation} from 'stellar-base';
 import * as Digest from 'multiformats/hashes/digest';
 import {sha256} from 'multiformats/hashes/sha2';
 import * as raw from 'multiformats/codecs/raw';
 import { CID } from 'multiformats/cid';
 
-import {Asset, Operation} from 'stellar-base';
+import {AccountWatcher, AccountDigger} from './apiReaders.js';
+import {SigningAccount} from './signing.js';
+import {COL_Node} from './cols.js';
+import * as Sodium from './na.js'
+
+const STELLAR_TX_CODEC_CODE = 0xd1;
 
 function abrevId(id){
   return `${id.slice(0, 5)}...${id.slice(-5)}`
@@ -43,7 +42,7 @@ async function DrainMessageQueue(readerResult){
   let traversed;
   const decodedTraversed = [];
   for(const message of readerResult.recordQueue){
-console.log(`draining message queue of ${message.asset_code}, created at ${message.created_at}, with memo ${message.transaction.memo}->${SigningAccount.memoToCID(message.transaction.memo)}`);
+//console.log(`draining message queue of ${message.asset_code}, created at ${message.created_at}, with memo ${message.transaction.memo}->${SigningAccount.memoToCID(message.transaction.memo)}`);
     switch(message.asset_code){
     case 'MessageMe':{
       const pk = await(SigningAccount.dataEntry(message.from, 'libsodium_box_pk'));
@@ -82,18 +81,20 @@ console.log(`last element is `, decodedTraversed.slice(-1).pop());
 console.log(`while decodedTraversed length is ${decodedTraversed.length}`);
 console.log(`will make Buffer from: ${decodedTraversed.slice(-1).pop().transaction_hash}`);*/
     const txHash = Buffer.from(decodedTraversed.slice(-1).pop().transaction_hash, 'hex');
-    if(Buffer.isBuffer(txHash))
+ /*   if(Buffer.isBuffer(txHash))
       console.log(`made Buffer of ${txHash.length} bytes for transaction_hash ${txHash.toString('hex')}`);
     const digest = Digest.create(sha256.code, txHash);
-    console.log(`created hash digest `, digest);
-    const cid = CID.create(1, 0xd1/*raw.code*/, Digest.create(sha256.code, txHash));
-    console.log(`cid ${cid.toString()} is `, cid);
+//console.log(`created hash digest `, digest);
+    let cid = CID.create(1, STELLAR_TX_CODEC_CODE, Digest.create(sha256.code, txHash));
+    console.log(`last transaction_hash ${cid.toString()} has cid: `, cid);
+    //cid = new CID(1, STELLAR_TX_CODEC_CODE, Digest.create(sha256.code, txHash));
+    console.log(`and calling CID's constructor I get ${cid.toString()} : `, cid); */
     await this.tx([
       Operation.payment({
         destination: this.account.id, 
         asset: new Asset('MessagesRead', this.account.id), 
         amount: '0.0000001'})
-      ], new CID(1, 0xd1/*raw.code*/, Digest.create(sha256.code, txHash)));
+      ], CID.create(1, STELLAR_TX_CODEC_CODE, Digest.create(sha256.code, txHash)));
     this.watcher.callback(decodedTraversed);
   }
   return decodedTraversed

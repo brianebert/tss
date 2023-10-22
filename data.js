@@ -94,6 +94,10 @@ class Data {
   }
   
   static cache = new Instances(100);
+  // you can set <cache.readFrom = false> for debugging.
+  // When set to false, cache will continue functioning
+  // but immitate a hit failure, forcing ipfs query from
+  // Data.read()
 
   static fromCID(cid, keys=null){ // left here to support legacy code
     return this.read(cid, keys)
@@ -129,8 +133,9 @@ class Data {
     const cached = Data.cache.fetch({cid: cid});
     if(cached){
       console.log(`read ${cached.cid.toString()} from cache`);
-      return Promise.resolve(cached)
+      return Promise.resolve(cached)      
     }
+
     let bytes = await request(`${IPFS_GATEWAY}/${cid.toString()}`, {headers: {"Accept": "application/vnd.ipld.raw"}});
 //console.log(`have read ${bytes.length} bytes as ${typeof bytes}`);
     bytes = new Uint8Array(bytes);
