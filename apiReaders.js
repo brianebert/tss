@@ -1,5 +1,5 @@
 //const {request} = require('./http.js');
-import {request} from './http.js';
+import {request, EventSource} from './http.js';
 const HORIZON = 'https://horizon.stellar.org';
 const API_PAGE_SIZE = 100;
 // reading api is recursive, avoid stack overflow

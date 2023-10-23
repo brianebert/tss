@@ -42,7 +42,7 @@ async function DrainMessageQueue(readerResult){
   let traversed;
   const decodedTraversed = [];
   for(const message of readerResult.recordQueue){
-//console.log(`draining message queue of ${message.asset_code}, created at ${message.created_at}, with memo ${message.transaction.memo}->${SigningAccount.memoToCID(message.transaction.memo)}`);
+console.log(`draining message queue of ${message.asset_code}, created at ${message.created_at}, with memo ${message.transaction.memo}->${SigningAccount.memoToCID(message.transaction.memo)}`);
     switch(message.asset_code){
     case 'MessageMe':{
       const pk = await(SigningAccount.dataEntry(message.from, 'libsodium_box_pk'));

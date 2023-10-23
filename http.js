@@ -2,13 +2,37 @@ const isBrowser=new Function("try {return this===window;}catch(e){ return false;
 console.log(`isBrowser is`, isBrowser);
 console.log(isBrowser ? `detected browser` : `detected node`);
 
-if(isBrowser)
+if(isBrowser) {
   //  window.Buffer so Stellar stuff works in the browser
   await import('buffer').then(mod => window.Buffer = mod.Buffer);
-else
-  var [Blob, Buffer, https] = await 
-    Promise.all([import('buffer'), import('https')])
-           .then(([bufMod, httpMod]) => [bufMod.Blob, bufMod.Buffer, httpMod])
+  var ES = EventSource;
+}
+else {
+  var [Blob, Buffer, https] = await Promise.all([import('buffer'), import('https')])
+                              .then(([bufMod, httpMod]) => [bufMod.Blob, bufMod.Buffer, httpMod]);
+  var ES = async function(url){
+    console.log(`trying to ES from ${url}`);
+    const response = await fetch(url, { method: "GET", headers: {"Accept": "text/event-stream"}});
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      //const records = JSON.parse(decoder.decode(value))._embedded.records;//._embedded.records.pop();
+      console.log(`received ${decoder.decode(value)}`);
+      const records = [];
+      if(records.length){
+        const ledger = records.pop();
+        console.log(`received ledger ${ledger.paging_token}, sequence ${ledger.sequence}, closed at ${ledger.closed_at}`);
+      }
+    }
+    console.log(`broke from while loop`);
+  }
+}
+
+export function EventSource(args){
+  return ES(args)
+}
 
 function abConcat(arrays){
   let length = arrays.reduce((acc, value) => acc + value.length, 0);

@@ -71,7 +71,7 @@ export class StellarAccount {
   }
 
   static sellOffer(stellarAccount, opts){
-    console.log(`${stellarAccount.account.id} is making a sell offer with opts: `, opts);
+    //console.log(`${stellarAccount.account.id} is making a sell offer with opts: `, opts);
     const buy = Asset.native();
     const sell = new Asset(opts.selling, stellarAccount.account.id);
     return this.offers(stellarAccount, Object.fromEntries(new Map([[opts.selling, true]])))
