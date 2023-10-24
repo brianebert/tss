@@ -68,9 +68,12 @@ console.log(`draining message queue of ${message.asset_code}, created at ${messa
     }
     //traversed.message = message;
     //console.log(`traversed from root ${traversed.cid.toString()}: `, traversed.value);
-    traversed.value.transaction_hash = message.transaction_hash;
-    traversed.value.operation_number = message.id;
-    decodedTraversed.push(traversed.value);
+    //traversed.value.transaction_hash = message.transaction_hash;
+    //traversed.value.operation_number = message.id;
+    decodedTraversed.push({operation_number: message.id,
+                           transaction_hash: message.transaction_hash,
+                           type: message.asset_code,
+                           value: traversed.value});
   }
   if(decodedTraversed.length){
     //console.log(`marking ${decodedTraversed.length} messages read`);
