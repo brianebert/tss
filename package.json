@@ -30,6 +30,7 @@
     "@ipld/dag-json": "10.0.1",
     "@ipld/dag-pb": "^4.0.3",
     "@stellar/freighter-api": "^1.7.0",
+    "eventsource": "^2.0.2",
     "libsodium-wrappers": "^0.7.13",
     "multiformats": "^12.1.2",
     "stellar-base": "^9.0.0"
