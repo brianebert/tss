@@ -55,11 +55,11 @@ console.log(`draining message queue of ${message.asset_code}, created at ${messa
       break;
     case 'ShareData':{
       const pk = await SigningAccount.dataEntry(message.from, 'libsodium_kx_pk');
-      console.log(`retrieved ${message.from} libsodium_kx_pk: `, pk);
+//console.log(`retrieved ${message.from} libsodium_kx_pk: `, pk);
       const rxKey = await Sodium.sharedKeyRx(this.shareKX, pk);
-      console.log(`computed shared receive key: `, rxKey);
+//console.log(`computed shared receive key: `, rxKey);
       const node = await COL_Node.fromCID(SigningAccount.memoToCID(message.transaction.memo), {shared: rxKey});
-      console.log(`Decoded : `, node);
+//console.log(`Decoded : `, node);
       traversed = await COL_Node.traverse(node.cid, ()=>{}, {shared: rxKey});
     }
       break;
@@ -69,6 +69,7 @@ console.log(`draining message queue of ${message.asset_code}, created at ${messa
     //traversed.message = message;
     //console.log(`traversed from root ${traversed.cid.toString()}: `, traversed.value);
     traversed.value.transaction_hash = message.transaction_hash;
+    traversed.value.operation_number = message.id;
     decodedTraversed.push(traversed.value);
   }
   if(decodedTraversed.length){
