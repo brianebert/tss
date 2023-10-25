@@ -18,6 +18,10 @@ const HORIZON = 'https://horizon.stellar.org';
 const MESSAGE_PRICE = '0.1000000';
 const TXTIMEOUT = 60;
 
+function abrevIt(id){
+  return `${id.slice(0, 5)}...${id.slice(-5)}`
+}
+
 export class StellarAccount {
   #account; // Signing is done with a Stellar account
   #watcher; // Interface to Stellar API endpoints
@@ -132,11 +136,11 @@ export class StellarAccount {
   }
 
   async addSigner(pk=null){
-    console.log(`Object.hasOwn(this, 'ed25519'): `, Object.hasOwn(this, 'ed25519'));
+//console.log(`Object.hasOwn(this, 'ed25519'): `, Object.hasOwn(this, 'ed25519'));
     if(!pk && this?.ed25519)
       pk = this.ed25519.pk;
     const account = await this.reload();
-    console.log(`encoding pk: `, pk);
+//console.log(`encoding pk: `, pk);
     const pkStr = StrKey.encodeEd25519PublicKey(pk);
     //console.log(`signers are: `, this.account.signers);
     for(let signer of this.account.signers)
@@ -174,6 +178,7 @@ export class StellarAccount {
         const myAsset = messenger.buying.asset_type !== 'native' ? 
                         new Asset(nessenger.asset_code, messenger.asset_issuer) :
                         Asset.native();
+        console.log(`sending ${code},${abrevIt(issuer)} from ${abrevIt(this.account.id)} to ${abrevIt(to)}`)
         return this.tx([Operation.pathPaymentStrictReceive(
           {'sendAsset': myAsset, 'sendMax': messenger.price, 'destination': to,
            'destAsset': new Asset(code, issuer), 'destAmount': '1', 'path': []})], cid)
@@ -205,7 +210,7 @@ export class StellarAccount {
   }
 
   tx(operations, cid=null){
-    console.log(`building Stellar transaction for operations: `, operations);
+//console.log(`building Stellar transaction for operations: `, operations);
     return Promise.all([this.reload(), request(`${HORIZON}/fee_stats`)])
       .then(([account, stats]) => new TransactionBuilder(
          new Account(account.id, account.sequence),

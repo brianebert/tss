@@ -109,7 +109,6 @@ class IPFS_COL_Node extends Data {
     console.log(`updating ${this.name} ${keys?'ciphertext':'plaintext'} with: `, updates);
     const value = Object.assign({}, this.value);
     for(let key of Object.keys(value)){
-      console.log(`processing ${this.name}.value.${key} for updates: `, updates);
       if(Object.hasOwn(updates, key))
         value[key] = updates[key];
       else {
@@ -120,7 +119,6 @@ class IPFS_COL_Node extends Data {
     }
     for(let key of Object.keys(updates))
       value[key] = updates[key];
-    console.log(`updating this.value to: `, value);
     this.value = value;
     return this.write(this.name, keys)
                .then(writeResult => IPFS_COL_Node.bubbleBubble(this, keys))
