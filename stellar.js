@@ -18,9 +18,9 @@ const HORIZON = 'https://horizon.stellar.org';
 const MESSAGE_PRICE = '0.1000000';
 const TXTIMEOUT = 60;
 
-function abrevIt(id){
-  return `${id.slice(0, 5)}...${id.slice(-5)}`
-}
+//function abrevIt(id){
+  //return `${id.slice(0, 5)}...${id.slice(-5)}`
+//}
 
 export class StellarAccount {
   #account; // Signing is done with a Stellar account
@@ -47,6 +47,7 @@ export class StellarAccount {
     return request(`${HORIZON}/accounts/${account}`) 
       .then(response => {
         const dataEntries = JSON.parse(response).data;
+//console.log(`${account}.data = `, dataEntries);
         return Object.hasOwn(dataEntries, label) ? Buffer.from(dataEntries[label], 'base64') : Buffer.alloc(0)
       })  
   }
@@ -178,7 +179,8 @@ export class StellarAccount {
         const myAsset = messenger.buying.asset_type !== 'native' ? 
                         new Asset(nessenger.asset_code, messenger.asset_issuer) :
                         Asset.native();
-        console.log(`sending ${code},${abrevIt(issuer)} from ${abrevIt(this.account.id)} to ${abrevIt(to)}`)
+        const abrevIt = (str) => `${str.slice(0, 5)}...${str.slice(-5)}`;
+        console.log(`sending addresss ${abrevIt(cid.toString())} with ${code},${abrevIt(issuer)} from ${abrevIt(this.account.id)} to ${abrevIt(to)}`)
         return this.tx([Operation.pathPaymentStrictReceive(
           {'sendAsset': myAsset, 'sendMax': messenger.price, 'destination': to,
            'destAsset': new Asset(code, issuer), 'destAmount': '1', 'path': []})], cid)

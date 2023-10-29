@@ -34,47 +34,20 @@ function MessageFilter(payment){
 async function DrainMessageQueue(readerResult){
   //  A readerResult contains a recordQueue, recursionDepth of the read, and the reader's current cursor.
   //  The recordQueue is filled by the watcher with filterMyMessages above.
-//let traversed;
-  const decoded = [];
-  for(const message of readerResult.recordQueue){
-//console.log(`draining message queue of ${message.asset_code}, created at ${message.created_at}, with memo ${message.transaction.memo}->${SigningAccount.memoToCID(message.transaction.memo)}`);
-    switch(message.asset_code){
-    case 'MessageMe':{
-      const pk = await(SigningAccount.dataEntry(message.from, 'libsodium_box_pk'));
-      var node = await COL_Node.fromCID(SigningAccount.memoToCID(message.transaction.memo), {reader: this.ec25519.sk, writer: pk});
-//traversed = await COL_Node.traverse(node.cid, ()=>{}, {reader: this.ec25519.sk, writer: pk});
-    }
-      break;
-    case 'ShareData':{
-      const pk = await SigningAccount.dataEntry(message.from, 'libsodium_kx_pk');
-      const rxKey = await Sodium.sharedKeyRx(this.shareKX, pk);
-      var node = await COL_Node.fromCID(SigningAccount.memoToCID(message.transaction.memo), {shared: rxKey});
-//traversed = await COL_Node.traverse(node.cid, ()=>{}, {shared: rxKey});
-    }
-      break;
-    default:
-      throw new Error(`wasn't expecting to get here`)
-    }
-    decoded.push({operation_number: message.id,
-                           transaction_hash: message.transaction_hash,
-                           type: message.asset_code,
-                           value: node.value});
-  }
-  if(decoded.length){
-    // sort received oldest to newest (diggers collect them in reverse)
-    decoded.sort((a, b) => Date.parse(a) > Date.parse(b) ? 1 : -1);
-    const txHashStr = decoded.slice(-1).pop().transaction_hash;
+  if(readerResult.recordQueue.length){
+    readerResult.recordQueue.sort((a, b) => Date.parse(a.created_at) > Date.parse(b.created_at) ? 1 : -1);
+    const txHashStr = readerResult.recordQueue.slice(-1).pop().transaction_hash;
     const txHash = Buffer.from(txHashStr, 'hex');
-    console.log(`marking MessagesRead with ${txHashStr.slice(0,5)}...${txHashStr.slice(-5)}`);
+    console.log(`marking MessagesRead with memo hash ${txHashStr.slice(0,5)}...${txHashStr.slice(-5)}`);
     await this.tx([
       Operation.payment({
         destination: this.account.id, 
         asset: new Asset('MessagesRead', this.account.id), 
         amount: '0.0000001'})
       ], CID.create(1, STELLAR_TX_CODEC_CODE, Digest.create(sha256.code, txHash)));
-    this.watcher.callback(decoded); // gets decoded messages to app in real time
+    this.watcher.callback(readerResult.recordQueue); // gets decoded messages to app in real time
   }
-  return decoded  // identifies waiting messages to app
+  return readerResult.recordQueue  // identifies waiting messages to app
 }
 
 export class MessageWatcher extends AccountWatcher {
@@ -85,7 +58,7 @@ export class MessageWatcher extends AccountWatcher {
     this.#account = address;
   }
   async start(parent, callback){
-    this.#callback = callback;
+    this.#callback = callback.bind(parent);
     const digger = new MessageDigger(this.#account);
     const oldMsgs = await digger.dig(DrainMessageQueue.bind(parent));
     this.byBlock(DrainMessageQueue.bind(parent));
