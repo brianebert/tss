@@ -93,18 +93,11 @@ export class SigningAccount extends StellarAccount {
   }
 
   async sharedKeys(account, label){
-    //console.log(`deriving shared keys with ${account}.data[${label}]`);
+    // returns {rx: libsodium.crypto_kx_server_session_keys(keys.pk, keys.sk, pk).sharedRx,
+    //          tx: libsodium.crypto_kx_client_session_keys(keys.pk, keys.sk, pk).sharedTx}
     if(typeof account === 'string' && StrKey.isValidEd25519PublicKey(account))
-      return await request(`${HORIZON}/accounts/${account}`).then(response => {
-        //console.log(`account response is `, JSON.parse(response));
-        let buf = Buffer.from(JSON.parse(response).data[label], 'base64');
-        //console.log(`created buf: `, buf);
-        return buf
-      })//.then(pk => Sodium.sharedKeys(this.#shareKX, pk))
-      .then(pk => Promise.all([
-         Sodium.sharedKeyRx(this.#shareKX, pk),
-         Sodium.sharedKeyTx(this.#shareKX, pk)
-      ]))
-      .then(([receiver, sender]) => ({rx: receiver, tx: sender}))
+      return await request(`${HORIZON}/accounts/${account}`)
+        .then(response => Buffer.from(JSON.parse(response).data[label], 'base64'))
+        .then(pk => Sodium.sharedKeys(this.#shareKX, pk))
   }
 }

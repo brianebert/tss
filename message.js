@@ -19,13 +19,12 @@ function MessageFilter(payment){
   for(const messenger of ['MessageMe', 'ShareData']){
     if(payment.asset_code === messenger && payment.asset_issuer === this.account.id){
       const shortenedMemo = `${payment.transaction.memo.slice(0,5)}...${payment.transaction.memo.slice(-5)}`;
-      console.log(`found ${payment.asset_code} payment ID ${payment.id} created at ${payment.created_at} with memo ${shortenedMemo}`);
+//console.log(`found ${payment.asset_code} payment ID ${payment.id} created at ${payment.created_at} with memo ${shortenedMemo}`);
       this.watcher.recordQueue.push(payment);
     }
   }
   if(payment.asset_code === 'MessagesRead' && payment.asset_issuer === this.account.id){
 //console.log(`found memo ${Buffer.from(payment.transaction.memo, 'base64').toString('hex')} with MessagesRead created at ${payment.created_at}: `);
-    console.log(`found memo ${Buffer.from(payment.transaction.memo, 'base64').toString('hex')} with MessagesRead created at ${payment.created_at}: `);
     this.watcher.stopAtTxHash = Buffer.from(payment.transaction.memo, 'base64').toString('hex');
   }
   return false
@@ -38,7 +37,7 @@ async function DrainMessageQueue(readerResult){
     readerResult.recordQueue.sort((a, b) => Date.parse(a.created_at) > Date.parse(b.created_at) ? 1 : -1);
     const txHashStr = readerResult.recordQueue.slice(-1).pop().transaction_hash;
     const txHash = Buffer.from(txHashStr, 'hex');
-    console.log(`marking MessagesRead with memo hash ${txHashStr.slice(0,5)}...${txHashStr.slice(-5)}`);
+    console.log(`marking messages read up to Tx hash ${txHashStr.slice(0,5)}...${txHashStr.slice(-5)}`);
     await this.tx([
       Operation.payment({
         destination: this.account.id, 

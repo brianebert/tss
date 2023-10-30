@@ -56,7 +56,6 @@ async function decrypt(ciphertextWithNonce, key) {
 
 async function decryptFrom(ciphertextWithNonce, recipient, sender){
   const sodium = await libsodium();
-//  const [nonce, ciphertext] = splitNonceFromMessage(sodium.crypto_box_NONCEBYTES, Buffer.from(ciphertextWithNonce, 'base64'));
   const [nonce, ciphertext] = splitNonceFromMessage(sodium.crypto_box_NONCEBYTES, Buffer.from(ciphertextWithNonce));
   const decrypted = sodium.crypto_box_open_easy(
     ciphertext, nonce, sender, recipient
@@ -89,25 +88,9 @@ async function sharedKeys(keys, pk=null){
   const sodium = await libsodium();
   if(!pk)
     throw new Error('Suspicious public key')
-  const sharedKeys = sodium.crypto_kx_client_session_keys(keys.pk, keys.sk, pk);
 
-  return {rx: sharedKeys.sharedRx,
-          tx: sharedKeys.sharedTx}
+  return {rx: sodium.crypto_kx_server_session_keys(keys.pk, keys.sk, pk).sharedRx,
+          tx: sodium.crypto_kx_client_session_keys(keys.pk, keys.sk, pk).sharedTx}
 }
 
-async function sharedKeyRx(keys, pk=null) {
-  const sodium = await libsodium();
-  if(!pk)
-    throw new Error('Suspicious public key')
-
-  return sodium.crypto_kx_server_session_keys(keys.pk, keys.sk, pk).sharedRx
-}
-
-async function sharedKeyTx(keys, pk=null) {
-  const sodium = await libsodium();
-  if(!pk)
-    throw new Error('Suspicious public key')
-
-  return sodium.crypto_kx_client_session_keys(keys.pk, keys.sk, pk).sharedTx
-}
-export {encrypt, decrypt, encryptFor, decryptFrom, keysFromSig, sharedKeys, sharedKeyRx, sharedKeyTx}
+export {encrypt, decrypt, encryptFor, decryptFrom, keysFromSig, sharedKeys}
