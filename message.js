@@ -12,21 +12,16 @@ import * as Sodium from './na.js'
 const STELLAR_TX_CODEC_CODE = 0xd1;
 
 function MessageFilter(payment){
-  if(payment.transaction.hash === this.watcher.stopAtTxHash){
-//console.log(`found payment ${payment.id} created at ${payment.created_at} with TxHash ${payment.transaction.id} and previously marked MessagesRead`);
+  if(payment.transaction.hash === this.watcher.stopAtTxHash)
     return true
-  }
-  for(const messenger of ['MessageMe', 'ShareData']){
-    if(payment.asset_code === messenger && payment.asset_issuer === this.account.id){
-      const shortenedMemo = `${payment.transaction.memo.slice(0,5)}...${payment.transaction.memo.slice(-5)}`;
-//console.log(`found ${payment.asset_code} payment ID ${payment.id} created at ${payment.created_at} with memo ${shortenedMemo}`);
+
+  for(const messenger of ['MessageMe', 'ShareData'])
+    if(payment.asset_code === messenger && payment.asset_issuer === this.account.id)
       this.watcher.recordQueue.push(payment);
-    }
-  }
-  if(payment.asset_code === 'MessagesRead' && payment.asset_issuer === this.account.id){
-//console.log(`found memo ${Buffer.from(payment.transaction.memo, 'base64').toString('hex')} with MessagesRead created at ${payment.created_at}: `);
+
+  if(payment.asset_code === 'MessagesRead' && payment.asset_issuer === this.account.id)
     this.watcher.stopAtTxHash = Buffer.from(payment.transaction.memo, 'base64').toString('hex');
-  }
+  
   return false
 }
 
