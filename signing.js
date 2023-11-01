@@ -1,14 +1,16 @@
 import {default as wallet} from "@stellar/freighter-api";
 import {Keypair, StrKey} from "stellar-base";
 import {AccountWatcher, AccountDigger} from './apiReaders.js';
+import {COL_Node, request} from './cols.js';
 import {StellarAccount} from './stellar.js';
-import {COL_Node} from './cols.js';
-import {request} from './http.js';
+//import {request} from './http.js';
 import * as Sodium from './na.js';
 
+// Stellar api server
 const HORIZON = 'https://horizon.stellar.org';
 
 
+// repository for keys derived to automate encryption, decryption and block chain use
 export class SigningAccount extends StellarAccount {
   #ec25519; // hex string for asymetric encryption
   #ed25519; // a Stellar Keypair for automated signing
@@ -22,6 +24,8 @@ export class SigningAccount extends StellarAccount {
     this.#shareKX = keys?.shareKX ? keys.shareKX : null;
   }
 
+  // access the keys
+
   get ec25519(){
     return this.#ec25519
   }
@@ -34,25 +38,27 @@ export class SigningAccount extends StellarAccount {
     return this.#shareKX
   }
 
+  // creates SigningAccount from wallet imported
   static async fromWallet(){
     console.log(`working with wallet: `, wallet);
     console.log(`in a browser: `, wallet.isBrowser);
-    if(wallet.isBrowser && await wallet.isConnected())
+    if(wallet?.isBrowser && await wallet.isConnected())
       return wallet.getPublicKey().then(address => new this(address))
     return Promise.resolve(null)
   }
 
-  async deriveKeys(secret=null){
+  // uses a signature as randomness input.
+  async deriveKeys(secret=null, constants){
     if(secret){
       var kp = Keypair.fromSecret(secret);
       if(kp.publicKey() !== this.account.id)
         throw new Error(`if deriveKeys is passed secret, it must match account.id`);
     }
 
-    // this gets called at the end
+    // this gets called at the end. it calls libsodium
     function theThen(signedXdr){
       const sig = SigningAccount.sigFromXDR(signedXdr);
-      return Sodium.keysFromSig(sig)
+      return Sodium.keysFromSig(sig, constants)
         .then(keys => {
           //console.log(`derived keys: `, keys);
           this.#ec25519 = keys.ec25519;
@@ -77,24 +83,25 @@ export class SigningAccount extends StellarAccount {
       myPhrase.sign(kp);
       return Promise.resolve(myPhrase.toXDR())
         .then(theThen.bind(this)).then((keys) => {
-          //console.log(`got keys: `, keys);
-          //console.log(`and keypair: `, kp);
-            this.#ed25519 = {
+          // secret is known, overwrite derived signing pair
+          this.#ed25519 = {
             sk: kp.rawSecretKey(),
             pk: kp.rawPublicKey()
           };
         })
     }
 
+    // if secret is falsy, use signature from wallet to derive keys
     if(await wallet.getPublicKey() === this.account.id)
       return wallet.signTransaction(myPhrase.toXDR()).then(theThen.bind(this))
     else
       throw new Error(`Freighter account does not match Signing Account`)
   }
 
+  // returns {rx: libsodium.crypto_kx_server_session_keys(keys.pk, keys.sk, pk).sharedRx,
+  //          tx: libsodium.crypto_kx_client_session_keys(keys.pk, keys.sk, pk).sharedTx}
+  // select rx or tx appropriately whether writing to or reading from someone else
   async sharedKeys(account, label){
-    // returns {rx: libsodium.crypto_kx_server_session_keys(keys.pk, keys.sk, pk).sharedRx,
-    //          tx: libsodium.crypto_kx_client_session_keys(keys.pk, keys.sk, pk).sharedTx}
     if(typeof account === 'string' && StrKey.isValidEd25519PublicKey(account))
       return await request(`${HORIZON}/accounts/${account}`)
         .then(response => Buffer.from(JSON.parse(response).data[label], 'base64'))

@@ -2,6 +2,7 @@ const isBrowser=new Function("try {return this===window;}catch(e){ return false;
 console.log(`isBrowser is`, isBrowser);
 console.log(isBrowser ? `detected browser` : `detected node`);
 
+// fill in missing global dependencies
 if(isBrowser) {
   //  window.Buffer so Stellar stuff works in the browser
   await import('buffer').then(mod => window.Buffer = mod.Buffer);
@@ -12,6 +13,7 @@ else {
   await import('eventsource').then((EventSource) => global.EventSource = EventSource.default);
 }
 
+// concattenate lines of multifunction form data request body
 function abConcat(arrays){
   let length = arrays.reduce((acc, value) => acc + value.length, 0);
   let result = new Uint8Array(length);
@@ -36,6 +38,7 @@ function mfdTextSegment(text){
   return bytes
 }
 
+// 
 export function mfdOpts(fileIshes){
   // filishes must be itterable
   const segments = [];
@@ -62,6 +65,7 @@ export function mfdOpts(fileIshes){
   return options
 }
 
+// https request over XMLHttpRequest or node.https
 export function request(url, options={}, logArray=[]){
   return new Promise(function(resolve, reject){
     if(logArray.length > 0)

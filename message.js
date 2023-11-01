@@ -7,25 +7,31 @@ import { CID } from 'multiformats/cid';
 import {AccountWatcher, AccountDigger} from './apiReaders.js';
 import {SigningAccount} from './signing.js';
 import {COL_Node} from './cols.js';
-import * as Sodium from './na.js'
 
+const MESSAGE_TOKENS = ['MessageMe', 'ShareData'];
 const STELLAR_TX_CODEC_CODE = 0xd1;
 
-function MessageFilter(payment){
+// queues messages identified in account's payment stream ontil finding one marked by a MessagesRead token
+function untilMarkedRead(payment){
+  // found a message marked read. returning true stops reader
   if(payment.transaction.hash === this.watcher.stopAtTxHash)
     return true
 
-  for(const messenger of ['MessageMe', 'ShareData'])
+  // queue a matching token payment for message processing
+  for(const messenger of MESSAGE_TOKENS)
     if(payment.asset_code === messenger && payment.asset_issuer === this.account.id)
       this.watcher.recordQueue.push(payment);
 
+  // application has marked new messages read cursor
   if(payment.asset_code === 'MessagesRead' && payment.asset_issuer === this.account.id)
     this.watcher.stopAtTxHash = Buffer.from(payment.transaction.memo, 'base64').toString('hex');
   
+  // continue reading api
   return false
 }
 
-async function DrainMessageQueue(readerResult){
+// called when an api reader finishes reading
+async function readerDone(readerResult){
   //  A readerResult contains a recordQueue, recursionDepth of the read, and the reader's current cursor.
   //  The recordQueue is filled by the watcher with filterMyMessages above.
   if(readerResult.recordQueue.length){
@@ -44,30 +50,33 @@ async function DrainMessageQueue(readerResult){
   return readerResult.recordQueue  // identifies waiting messages to app
 }
 
+// collects waiting, unread messages 
+class MessageDigger extends AccountDigger {
+  constructor(address){
+    const context = {account: {id: address}};
+    super(address, 'payments', untilMarkedRead.bind(context), true);
+    context.watcher = this;
+  }
+}
+
+// collects waiting, unread messages on start() and then periodically checks for new messages
 export class MessageWatcher extends AccountWatcher {
   #account; // where to dig and watch
   #callback;// to call application
   constructor(address, parent){
-    super(address, 'payments', MessageFilter.bind(parent), true);
+    super(address, 'payments', untilMarkedRead.bind(parent), true);
     this.#account = address;
   }
   async start(parent, callback){
     this.#callback = callback.bind(parent);
     const digger = new MessageDigger(this.#account);
-    const oldMsgs = await digger.dig(DrainMessageQueue.bind(parent));
-    this.byBlock(DrainMessageQueue.bind(parent));
+    const oldMsgs = await digger.dig(readerDone.bind(parent));
+    this.byBlock(readerDone.bind(parent));
     return oldMsgs
   }
 
+  // so readerDone() can call .callback()
   get callback(){
     return this.#callback
-  }
-}
-
-class MessageDigger extends AccountDigger {
-  constructor(address){
-    const context = {account: {id: address}};
-    super(address, 'payments', MessageFilter.bind(context), true);
-    context.watcher = this;
   }
 }

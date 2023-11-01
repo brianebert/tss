@@ -1,3 +1,4 @@
+// implements a set of objects 
 export class SetOf {
   #equals;
   #members;
@@ -14,6 +15,7 @@ export class SetOf {
     this.#readFrom = state
   }
 
+  // add object to cache from its front
   add(proposed){
     if(this?.size && this.size === this.#members.length)
       this.#members.pop();
@@ -23,22 +25,14 @@ export class SetOf {
     return this.#members.unshift(proposed)
   }
 
+  // return cqche hits
   fetch(id){
     const index = this.#members.findIndex(member => this.#equals(id, member));
-    //console.log(`SetOf fetch found index:${index} searching cache for: `, id);
     if(index === -1)
       return null
     if(this.#readFrom)
       return this.#members[index]
     return null  
-  }
-
-  filter(fn){
-    return this.#members.filter(member => fn(member))
-  }
-
-  map(fn){
-    return this.#members.map(member => fn(member))
   }
 
   remove(proposed){
@@ -48,11 +42,13 @@ export class SetOf {
     return this.#members.splice(index, 1)
   }
 
-  replace(proposed){
-    const index = this.#members.findIndex(member => this.#equals(member, proposed));
-    if(index === -1)
-      throw new Error(`setOf.remove(proposed) cannot find index of proposed: `, proposed)
-    this.#members.splice(index, 1);
-    return this.#members.unshift(proposed)
+  // applies Array.filter() to members
+  filter(fn){
+    return this.#members.filter(member => fn(member))
+  }
+
+  // applies Array.map() to members
+  map(fn){
+    return this.#members.map(member => fn(member))
   }
 }

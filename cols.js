@@ -4,16 +4,17 @@
  *  2020/11/5
  */
 
-import { CID } from 'multiformats/cid';
 import { Data, request } from './data.js';
+import { CID } from 'multiformats/cid';
 
-// CIDv1, 0 bytes, raw codec, sha256
-const ZERO_BLOCK_CID = CID.parse('bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku');
-
-
+// adds properties refering to a parent nodes and a timestamp
+// and methods for inserting, deleting, and updating nodes
+// while maintaining their hash links (in bubbleBubble())
 class IPFS_COL_Node extends Data {
   #parents;
   constructor(data){
+    if(!Object.hasOwn(data, 'created_at'))
+      data['created_at'] = new Date().toUTCString();
     super(data);
     this.#parents = [];
   }
@@ -45,6 +46,7 @@ class IPFS_COL_Node extends Data {
         delete value[node.name];
       else
         value[node.name] = node.cid;
+      value['modified_at'] = new Date().toUTCString();
       value[`${parent.name}_last`] = parent.cid;
       parent.value = value;
       await parent.write(parent.name, keys);
@@ -59,13 +61,7 @@ class IPFS_COL_Node extends Data {
     )
   }
 
-  static fromCID(cid, keys=null){ // left here to support legacy code
-    return this.read(cid, keys).then(instance => {
-        instance.#parents = [];
-        return instance
-      })
-  }
-
+  // traverse blocks in depth first order, calling fn() on each once
   static async traverse(cid, fn=()=>{}, keys=null){
     const context = this;
     const haveTraversed = new Set();
@@ -86,6 +82,7 @@ class IPFS_COL_Node extends Data {
     return recurse(cid, fn, keys)
   }
 
+  // remove self from graph
   async delete(keys){
     await this.ready;
     console.log(`deleting ${this.name}`)
@@ -94,17 +91,22 @@ class IPFS_COL_Node extends Data {
     return IPFS_COL_Node.bubbleBubble(this, keys)
   }
 
+  // make node a child of self
   async insert(node, linkName, keys=null){
     await Promise.all([this.ready, node.ready]);
     //console.log(`linking ${linkName} to ${this.name}`);
-    const value = Object.assign({}, this.value);
+    let value = Object.assign({}, this.value);
     value[linkName] = node.cid;
     this.value = value;
     node.parents.push(this);
+    value = Object.assign({}, node.value);
+    value['inserted_at'] = new Date().toUTCString();
+    node.value = value;
     return node.write(node?.name?node.name:'', keys)
                .then(writeResult => IPFS_COL_Node.bubbleBubble(node, keys)) 
   }
 
+  // change value of self
   async update(updates, keys=null){
     console.log(`updating ${this.name} ${keys?'ciphertext':'plaintext'} with: `, updates);
     const value = Object.assign({}, this.value);
@@ -119,6 +121,7 @@ class IPFS_COL_Node extends Data {
     }
     for(let key of Object.keys(updates))
       value[key] = updates[key];
+    value['updated_at'] = new Date().toUTCString();
     this.value = value;
     return this.write(this.name, keys)
                .then(writeResult => IPFS_COL_Node.bubbleBubble(this, keys))

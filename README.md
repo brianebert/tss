@@ -1,2 +1,2 @@
 # tss
-safe simply way to use ipfs
+a tao (way) to safely and simply to use ipfs
