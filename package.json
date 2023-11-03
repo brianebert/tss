@@ -3,21 +3,17 @@
   "version": "1.0.0",
   "description": "a safe and simple way (tao) to use ipfs",
   "main": "index.js",
-  "scripts": {
-    "test": "change this later"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/brianebert/tss.git"
   },
   "keywords": [
-    "IPFS",
+    "dag",
     "ipfs",
-    "relational",
-    "DAG",
     "libsodium",
+    "relational",
     "stellar",
-    "Stellar"
+    "tss"
   ],
   "author": "Brian Ebert",
   "license": "ISC",
