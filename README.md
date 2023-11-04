@@ -1,9 +1,9 @@
 # @brianebert/tss
-a way (tao) to safely and simply to use ipfs distributd storage, with distributed message queueing, end to end encryption and micropayments.
+a way (**t**ao) to **s**afely and **s**imply to use [ipfs](https://github.com/ipfs/ipfs) distributd storage, with distributed message queueing, end to end encryption, and micropayments.
 
-tss encrypts your data with keys derived from your crypto wallet wallet signature, allowing you to safely store it in a public ipfs network.
+A **tss SigningAccount** encrypts your data with keys derived from your crypto wallet wallet signature, allowing you to safely store it in a public ipfs network.
 
-tss maintains relations between blocks of data by backlinking ipld dags and rippling hash changes from leaf node to graph root, using a simple insert(), modify(), and delete() programmer's api.
+**tss COL_Node**s maintain relations between ipfs ([ipld](https://github.com/ipld/ipld)) data by backlinking to parent nodes and rippling hash changes from leaf node to graph root, using a simple insert(), modify(), and delete() programmer's api.
 
 ## Install
 
