@@ -1,5 +1,5 @@
 # @brianebert/tss
-a way (tao) to safely and simply to use ipfs
+a way (tao) to safely and simply to use ipfs distributd storage, with distributed message queueing, end to end encryption and micropayments.
 
 tss encrypts your data with keys derived from your crypto wallet wallet signature, allowing you to safely store it in a public ipfs network.
 
