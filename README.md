@@ -1,10 +1,9 @@
 # @brianebert/tss
 a way (tao) to safely and simply to use ipfs
 
-safely because by default tss encrypts data before loading it into ipfs
+tss encrypts your data with keys derived from your crypto wallet wallet signature, allowing you to safely store it in a public ipfs network.
 
-simply because you can link ipfs addresses together in javascript and tss\
-maintains the links as changes ripple from leaf nodes to roots
+tss maintains relations between blocks of data by backlinking ipld dags and rippling hash changes from leaf node to graph root, using a simple insert(), modify(), and delete() programmer's api.
 
 ## Install
 
