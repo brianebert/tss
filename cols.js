@@ -61,20 +61,20 @@ class IPFS_COL_Node extends Data {
     )
   }
 
-  // traverse blocks in depth first order, calling fn() on each once
+  // traverse blocks in depth first order, calling fn(instance, depth) on each once
   static async traverse(cid, fn=()=>{}, keys=null){
     const context = this;
     const haveTraversed = new Set();
-    async function recurse(cid, fn, keys){
+    async function recurse(cid, fn, keys, depth=0){
       return await context.read(cid, keys).then(async instance => {
         if(!haveTraversed.has(cid.toString())){
           haveTraversed.add(cid.toString());
           for(const link of Object.keys(instance.links))
             if(!link.endsWith('_last')){
-              const subGraph = await recurse(instance.links[link], fn, keys);
+              const subGraph = await recurse(instance.links[link], fn, keys, ++depth);
               instance.value[link] = subGraph.cid;
             }
-          fn(instance);
+          fn(instance, depth);
         }
         return instance
       })

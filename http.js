@@ -4,13 +4,14 @@ console.log(isBrowser ? `detected browser` : `detected node`);
 
 // fill in missing global dependencies
 if(isBrowser) {
-  //  window.Buffer so Stellar stuff works in the browser
+  //  window.Buffer so stellar-base stuff works in the browser
   await import('buffer').then(mod => window.Buffer = mod.Buffer);
 }
 else {
-  var [Blob, Buffer, https] = await Promise.all([import('buffer'), import('https')])
-                              .then(([bufMod, httpMod]) => [bufMod.Blob, bufMod.Buffer, httpMod]);
+  //var [Blob, Buffer, https] = await Promise.all([import('buffer'), import('https')])
+    //                          .then(([bufMod, httpMod]) => [bufMod.Blob, bufMod.Buffer, httpMod]);
   await import('eventsource').then((EventSource) => global.EventSource = EventSource.default);
+  await import('ws').then(WS => global.WebSocket = WS.default);
 }
 
 // concattenate lines of multifunction form data request body
