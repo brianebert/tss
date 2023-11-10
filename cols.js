@@ -61,7 +61,8 @@ class IPFS_COL_Node extends Data {
     )
   }
 
-  // traverse blocks in depth first order, calling fn(instance, depth) on each once
+  // traverse blocks in depth first order, calling fn(instance, depth)
+  // on each once and adding parent link to each subgraph traversed
   static async traverse(cid, fn=()=>{}, keys=null){
     const context = this;
     const haveTraversed = new Set();
@@ -71,8 +72,9 @@ class IPFS_COL_Node extends Data {
           haveTraversed.add(cid.toString());
           for(const link of Object.keys(instance.links))
             if(!link.endsWith('_last')){
-              const subGraph = await recurse(instance.links[link], fn, keys, ++depth);
+              const subGraph = await recurse(instance.links[link], fn, keys, depth + 1);
               instance.value[link] = subGraph.cid;
+              subGraph.parents.push(instance);
             }
           fn(instance, depth);
         }
