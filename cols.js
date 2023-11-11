@@ -74,9 +74,11 @@ class IPFS_COL_Node extends Data {
             if(!link.endsWith('_last')){
               const subGraph = await recurse(instance.links[link], fn, keys, depth + 1);
               instance.value[link] = subGraph.cid;
-              subGraph.parents.push(instance);
+              if(! instance.cid.toString() in subGraph.parents.map(parent => parent.cid.toString()))
+                subGraph.parents.push(instance);
             }
-          fn(instance, depth);
+          // fn must always return a promise!!
+          await fn(instance, depth);
         }
         return instance
       })
