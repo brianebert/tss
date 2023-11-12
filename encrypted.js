@@ -55,12 +55,12 @@ class Encrypted_Node extends COL_Node {
         if(!link.endsWith('_last'))
           ptValue[link] = ptLinks[node.links[link]];
       const ptNode = await new context(ptValue, node.signingAccount, node.name).write(node.name, null, false);
-      ptLinks[node.cid.toString()] = ptNode.cid.toString();
+      ptLinks[node.cid.toString()] = ptNode.cid;
     }
     const ptRoot = await this.traverse(root.cid, publishBlock, keys);
-    console.log(`have published plaintext document at ${ptLinks[ptRoot.cid.toString()]}`)
-    await this.persist(root.signingAccount, docName, ptLinks[ptRoot.cid.toString()]);
-    console.log(`${root.signingAccount.account.id} has set ${docName} to ${ptLinks[ptRoot.cid.toString()]}`)
+    console.log(`have published plaintext document at `, ptLinks[ptRoot.cid.toString()])
+    await this.persist(root.signingAccount, docName, ptLinks[ptRoot.cid.toString()].toString());
+    console.log(`${root.signingAccount.account.id} has set ${docName} to ${ptLinks[ptRoot.cid.toString()].toString()}`)
   }
 }
 
