@@ -1,6 +1,6 @@
 {
   "name": "@brianebert/tss",
-  "version": "1.1.0",
+  "version": "1.0.1",
   "description": "a safe and simple way (tao) to use ipfs",
   "main": "index.js",
   "repository": {
