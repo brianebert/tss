@@ -8,8 +8,8 @@ if(isBrowser) {
   await import('buffer').then(mod => window.Buffer = mod.Buffer);
 }
 else {
-  //var [Blob, Buffer, https] = await Promise.all([import('buffer'), import('https')])
-    //                          .then(([bufMod, httpMod]) => [bufMod.Blob, bufMod.Buffer, httpMod]);
+  var [Blob, Buffer, https] = await Promise.all([import('buffer'), import('https')])
+      .then(([bufMod, httpMod]) => [bufMod.Blob, bufMod.Buffer, httpMod]);
   await import('eventsource').then((EventSource) => global.EventSource = EventSource.default);
   await import('ws').then(WS => global.WebSocket = WS.default);
 }
