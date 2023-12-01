@@ -11,7 +11,7 @@ import {SetOf} from './cache.js';
 import {mfdOpts, request} from './http.js';
 import * as sodium from './na.js';
 
-const INFURA_IPFS = 'https://motia.com/api/v1/ipfs';
+const IPFS_API = 'https://motia.com/api/v1/ipfs';
 const IPFS_GATEWAY = 'https://motia.infura-ipfs.io/ipfs';
 
 // for caching instances of Data
@@ -160,7 +160,7 @@ class Data {
   }
 
   // write block to ipfs repo, encrypted if keys are provided
-  async write(name='', keys=null, cache=true){
+  async write(name='', keys=null, cache=true, toIPFS=true){
     await this.#ready;
     let block = this.#block;
     if(keys){
@@ -176,21 +176,22 @@ class Data {
     //return this
     // Remove the preceeding line to write to your IPFS /block/put endpoint
     // To write to IPFS /block/put you must supply below YOUR_IPFS http api root
-    return request(
-      `${INFURA_IPFS}/block/put?cid-codec=${Data.codecForCID(block.cid).name}`,
-      new mfdOpts([{
-        data: block.bytes,
-        type: "application/octet-stream",
-        'name': name
-      }])
-    )
-    .catch(error => console.error(`http.request produced error: `, error))
-    .then(response => {
-      const writeResponse = JSON.parse(response);
-      if(!CID.equals(block.cid, CID.parse(writeResponse.Key)))
-        throw new Error(`block CID: ${block.cid.toString()} does not match write CID: ${writeResponse.Key}`)
-      return this
-    })
+    if(toIPFS)
+      await request(
+        `${IPFS_API}/block/put?cid-codec=${Data.codecForCID(block.cid).name}`,
+        new mfdOpts([{
+          data: block.bytes,
+          type: "application/octet-stream",
+          'name': name
+        }])
+      )
+      .catch(error => console.error(`http.request produced error: `, error))
+      .then(response => {
+        const writeResponse = JSON.parse(response);
+        if(!CID.equals(block.cid, CID.parse(writeResponse.Key)))
+          throw new Error(`block CID: ${block.cid.toString()} does not match write CID: ${writeResponse.Key}`)
+      })
+    return this
   }
 }
 
