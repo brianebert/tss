@@ -25,12 +25,14 @@ class Datums extends SetOf {
 // wraps a multiformats block in accessors, caching, and methods for writing and reading
 // to and from ipfs with asymetric and shared key libsodium encryption
 class Data {
-  #block; #cid; #ready;
+  #block; #cid; #ephemeral; #ready; #size;
   constructor(data, codec=cbor){
     this.codec = codec;
     if(data instanceof Block.Block){
       this.#block = data;
       this.#cid = data.cid;
+      this.#ephemeral = true;
+      this.#size = data.byteLength;
       this.#ready = Promise.resolve();
     }
     else {
@@ -53,6 +55,10 @@ class Data {
     for(let key of Object.keys(this.links))
       delete value[key];
     return value
+  }
+
+  get ephemeral(){
+    return this.#ephemeral
   }
 
   get links(){
@@ -83,6 +89,8 @@ class Data {
     function theThen(block){
       this.#cid = block.cid;
       this.#block = block;
+      this.#ephemeral = true;
+      this.#size = block.byteLength;
     };    
   }
   
@@ -153,14 +161,18 @@ class Data {
     }
 
     const instance = new this(block);
-    instance.cid = cid;
+    instance.#cid = cid;
+    instance.#ephemeral = false;
+    instance.#size = bytes.byteLength;
     Data.cache.add(instance);
     await instance.ready
     return instance
   }
 
   // write block to ipfs repo, encrypted if keys are provided
-  async write(name='', keys=null, cache=true, toIPFS=true){
+  async write(name='', keys=null, cache=true, toIPFS=false){
+    if(!cache && !toIPFS)
+      throw new Error(`calls to data.write() must set cache or toIPFS true`)
     await this.#ready;
     let block = this.#block;
     if(keys){
@@ -188,9 +200,12 @@ class Data {
       .catch(error => console.error(`http.request produced error: `, error))
       .then(response => {
         const writeResponse = JSON.parse(response);
+        this.#size = parseInt(writeResponse.Size);
+console.log(`wrote ${this.name} at ${writeResponse.Key}`)
         if(!CID.equals(block.cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${block.cid.toString()} does not match write CID: ${writeResponse.Key}`)
       })
+    this.#ephemeral = !toIPFS;
     return this
   }
 }

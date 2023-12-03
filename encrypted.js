@@ -41,8 +41,16 @@ class Encrypted_Node extends COL_Node {
     return node
   }
 
-  static async persist(account, label, value){
-    return account.setDataEntry(label, value);
+  static async persist(account, label, cid, keys){
+    let root;
+    async function writeBlock(node, depth){
+      if(node.ephemeral)
+        await node.write(node.name, keys, true, true)
+      if(depth === 0)
+        root = node;
+    }
+    await this.traverse(cid, writeBlock, keys)
+    return account.setDataEntry(label, root.cid.toString());
   }
 
   // linking plaintext depends upon depth first COL_Node.traverse()
@@ -54,12 +62,12 @@ class Encrypted_Node extends COL_Node {
       for(const link of Object.keys(node.links))
         if(!link.endsWith('_last'))
           ptValue[link] = ptLinks[node.links[link]];
-      const ptNode = await new context(ptValue, node.signingAccount, node.name).write(node.name, null, false);
+      const ptNode = await new context(ptValue, node.signingAccount, node.name).write(node.name, null, false, true);
       ptLinks[node.cid.toString()] = ptNode.cid;
     }
     const ptRoot = await this.traverse(root.cid, publishBlock, keys);
     console.log(`have published plaintext document at `, ptLinks[ptRoot.cid.toString()])
-    await this.persist(root.signingAccount, docName, ptLinks[ptRoot.cid.toString()].toString());
+    await this.persist(root.signingAccount, docName, ptLinks[ptRoot.cid.toString()], keys);
     console.log(`${root.signingAccount.account.id} has set ${docName} to ${ptLinks[ptRoot.cid.toString()].toString()}`)
   }
 }
