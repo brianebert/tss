@@ -11,7 +11,7 @@ import {SetOf} from './cache.js';
 import {mfdOpts, request} from './http.js';
 import * as sodium from './na.js';
 
-const IPFS_API = 'https://motia.com/api/v1/ipfs';
+const IPFS_BLOCK_PUT_URL = (cid) => `https://motia.com/api/v1/ipfs/block/put?cid-codec=${Data.codecForCID(cid).name}`;
 const IPFS_GATEWAY = 'https://motia.infura-ipfs.io/ipfs';
 
 // for caching instances of Data
@@ -25,12 +25,13 @@ class Datums extends SetOf {
 // wraps a multiformats block in accessors, caching, and methods for writing and reading
 // to and from ipfs with asymetric and shared key libsodium encryption
 class Data {
-  #block; #cid; #ephemeral; #ready; #size;
+  #block; #cid; #encryptedBytes; #ephemeral; #ready; #size;
   constructor(data, codec=cbor){
     this.codec = codec;
     if(data instanceof Block.Block){
       this.#block = data;
       this.#cid = data.cid;
+      this.#encryptedBytes = new Uint8Array(0)
       this.#ephemeral = true;
       this.#size = data.byteLength;
       this.#ready = Promise.resolve();
@@ -42,9 +43,9 @@ class Data {
 
   // access away
 
-  get block(){
-    return this.#block
-  }
+//  get block(){
+  //  return this.#block
+  //}
 
   get cid(){ 
     return this.#cid
@@ -169,8 +170,29 @@ class Data {
     return instance
   }
 
-  // write block to ipfs repo, encrypted if keys are provided
-  async write(name='', keys=null, cache=true, toIPFS=false){
+  async persist(name=''){
+    return request(
+        IPFS_BLOCK_PUT_URL(this.#cid),//`${IPFS_BLOCK_PUT_URL}/block/put?cid-codec=${Data.codecForCID(this.#cid).name}`,
+        new mfdOpts([{
+          data: this.#encryptedBytes.byteLength === 0 ? this.#block.bytes : this.#encryptedBytes,
+          type: "application/octet-stream",
+          'name': name
+        }])
+      )
+      .catch(error => console.error(`http.request produced error: `, error))
+      .then(response => {
+        const writeResponse = JSON.parse(response);
+        this.#size = parseInt(writeResponse.Size);
+console.log(`wrote ${this.name} at ${writeResponse.Key}`);
+        if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
+          throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
+        this.#ephemeral = false;
+      })
+  }
+
+  // write ciphertext if keys are provided
+  // calls can be edited to omit name parameter (because I split off persist())
+  async write(name='', keys=null, cache=true){
     if(!cache && !toIPFS)
       throw new Error(`calls to data.write() must set cache or toIPFS true`)
     await this.#ready;
@@ -178,6 +200,7 @@ class Data {
     if(keys){
       const cipherText = await Data.lock(block.bytes, keys);
       block = await Block.encode({value: cipherText, codec: raw, hasher});
+      this.#encryptedBytes = block.bytes;
     }
     this.#cid = block.cid;
     if(cache)
@@ -188,24 +211,8 @@ class Data {
     //return this
     // Remove the preceeding line to write to your IPFS /block/put endpoint
     // To write to IPFS /block/put you must supply below YOUR_IPFS http api root
-    if(toIPFS)
-      await request(
-        `${IPFS_API}/block/put?cid-codec=${Data.codecForCID(block.cid).name}`,
-        new mfdOpts([{
-          data: block.bytes,
-          type: "application/octet-stream",
-          'name': name
-        }])
-      )
-      .catch(error => console.error(`http.request produced error: `, error))
-      .then(response => {
-        const writeResponse = JSON.parse(response);
-        this.#size = parseInt(writeResponse.Size);
-console.log(`wrote ${this.name} at ${writeResponse.Key}`)
-        if(!CID.equals(block.cid, CID.parse(writeResponse.Key)))
-          throw new Error(`block CID: ${block.cid.toString()} does not match write CID: ${writeResponse.Key}`)
-      })
-    this.#ephemeral = !toIPFS;
+
+    this.#ephemeral = true;
     return this
   }
 }

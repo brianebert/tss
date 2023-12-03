@@ -45,7 +45,7 @@ class Encrypted_Node extends COL_Node {
     let root;
     async function writeBlock(node, depth){
       if(node.ephemeral)
-        await node.write(node.name, keys, true, true)
+        await node.persist(node.name)
       if(depth === 0)
         root = node;
     }
@@ -62,7 +62,7 @@ class Encrypted_Node extends COL_Node {
       for(const link of Object.keys(node.links))
         if(!link.endsWith('_last'))
           ptValue[link] = ptLinks[node.links[link]];
-      const ptNode = await new context(ptValue, node.signingAccount, node.name).write(node.name, null, false, true);
+      const ptNode = await new context(ptValue, node.signingAccount, node.name).write(node.name, null, false);
       ptLinks[node.cid.toString()] = ptNode.cid;
     }
     const ptRoot = await this.traverse(root.cid, publishBlock, keys);
