@@ -42,19 +42,22 @@ class Encrypted_Node extends COL_Node {
   }
 
   static async persist(account, label, cid, keys){
-    let root;
-    async function writeBlock(node, depth){
+    async function writeBlock(node){
       if(node.ephemeral)
         await node.persist(node.name)
-      if(depth === 0)
-        root = node;
     }
     await this.traverse(cid, writeBlock, keys)
-    return account.setDataEntry(label, root.cid.toString());
+    return account.setDataEntry(label, cid.toString());
   }
 
   // linking plaintext depends upon depth first COL_Node.traverse()
   static async publishPlaintext(root, keys, docName=null){
+    if(!keys){
+      if(window?.alert)
+        window.alert(`publishPlaintext() was not provided keys. is document plaintext already?`);
+      console.log(`publishPlaintext() was not provided keys. is document plaintext already?`);
+      return
+    }
     const context = this;
     const ptLinks = {}; // .cid of encrypted graph keys plaintext node.cid.toString()
     async function publishBlock(node){
@@ -62,13 +65,14 @@ class Encrypted_Node extends COL_Node {
       for(const link of Object.keys(node.links))
         if(!link.endsWith('_last'))
           ptValue[link] = ptLinks[node.links[link]];
-      const ptNode = await new context(ptValue, node.signingAccount, node.name).write(node.name, null, false);
+      const ptNode = await new context(ptValue, node.signingAccount, node.name).write(node.name, null);
       ptLinks[node.cid.toString()] = ptNode.cid;
     }
     const ptRoot = await this.traverse(root.cid, publishBlock, keys);
     console.log(`have published plaintext document at `, ptLinks[ptRoot.cid.toString()])
     await this.persist(root.signingAccount, docName, ptLinks[ptRoot.cid.toString()], keys);
-    console.log(`${root.signingAccount.account.id} has set ${docName} to ${ptLinks[ptRoot.cid.toString()].toString()}`)
+    console.log(`${root.signingAccount.account.id} has set ${docName} to ${ptLinks[ptRoot.cid.toString()].toString()}`);
+    // Should purge cache of plaintext blocks here
   }
 }
 

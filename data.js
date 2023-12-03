@@ -11,8 +11,9 @@ import {SetOf} from './cache.js';
 import {mfdOpts, request} from './http.js';
 import * as sodium from './na.js';
 
-const IPFS_BLOCK_PUT_URL = (cid) => `https://motia.com/api/v1/ipfs/block/put?cid-codec=${Data.codecForCID(cid).name}`;
 const IPFS_GATEWAY = 'https://motia.infura-ipfs.io/ipfs';
+const IPFS_BLOCK_PUT_URL = (cid) => 
+  `https://motia.com/api/v1/ipfs/block/put?cid-codec=${Data.codecForCID(cid).name}`;
 
 // for caching instances of Data
 class Datums extends SetOf {
@@ -51,12 +52,12 @@ class Data {
     return this.#cid
   }
 
-  get data(){
-    const value = Object.assign({}, this.#block.value);
-    for(let key of Object.keys(this.links))
-      delete value[key];
-    return value
-  }
+//  get data(){
+  //  const value = Object.assign({}, this.#block.value);
+    //for(let key of Object.keys(this.links))
+    //  delete value[key];
+  //  return value
+//  }
 
   get ephemeral(){
     return this.#ephemeral
@@ -172,7 +173,7 @@ class Data {
 
   async persist(name=''){
     return request(
-        IPFS_BLOCK_PUT_URL(this.#cid),//`${IPFS_BLOCK_PUT_URL}/block/put?cid-codec=${Data.codecForCID(this.#cid).name}`,
+        IPFS_BLOCK_PUT_URL(this.#cid),
         new mfdOpts([{
           data: this.#encryptedBytes.byteLength === 0 ? this.#block.bytes : this.#encryptedBytes,
           type: "application/octet-stream",
