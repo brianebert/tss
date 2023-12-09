@@ -58,6 +58,10 @@ export class StellarAccount {
       })  
   }
 
+  static load(accountId){
+    return request(`${HORIZON}/accounts/${accountId}`)
+  }
+
   // returns cid from 32 byte memoHash
   static memoToCID(memo){
     // Assumes memo contains a raw sha256 hash pointing to encrypted data
@@ -198,7 +202,7 @@ export class StellarAccount {
 
   // get current on chain account state.
   reload(){
-    return request(`${HORIZON}/accounts/${this.account.id}`).then(response => this.#account = JSON.parse(response))
+    return StellarAccount.load(this.account.id).then(response => this.#account = JSON.parse(response))
   }
 
   // returns Buffer of value for account.data[label]

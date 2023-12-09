@@ -51,7 +51,7 @@ class Encrypted_Node extends COL_Node {
     }
     await this.traverse(cid, writeNode, keys);
     // clean cache and localStorage here
-    return console.log(`setting data entry for ${label}: `, cid.toString());
+    console.log(`setting data entry for ${label}: `, cid.toString());
     return account.setDataEntry(label, cid.toString());
   }
 
