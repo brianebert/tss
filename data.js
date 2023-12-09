@@ -11,9 +11,19 @@ import {SetOf} from './cache.js';
 import {mfdOpts, request} from './http.js';
 import * as sodium from './na.js';
 
-const IPFS_GATEWAY = 'https://motia.infura-ipfs.io/ipfs';
-const IPFS_BLOCK_PUT_URL = (cid) => 
-  `https://motia.com/api/v1/ipfs/block/put?cid-codec=${Data.codecForCID(cid).name}`;
+
+class IPFS_Provider {
+  #url;
+  constructor(){
+    this.#url = false;
+  }
+  set url(url){
+    this.#url = url;
+  }
+  get url(){
+    return this.#url
+  }
+}
 
 // for caching instances of Data
 class Datums extends SetOf {
@@ -26,7 +36,7 @@ class Datums extends SetOf {
 // wraps a multiformats block in accessors, caching, and methods for writing and reading
 // to and from ipfs with asymetric and shared key libsodium encryption
 class Data {
-  #block; #cid; #encryptedBytes; #ephemeral; #ready; #size;
+  #block; #cid; #encryptedBytes; #ephemeral; #ready; #sink; #size; #source;
   constructor(data, codec=cbor){
     this.codec = codec;
     if(data instanceof Block.Block){
@@ -95,12 +105,16 @@ class Data {
       this.#size = block.byteLength;
     };    
   }
-  
+    
   // you can set <cache.readFrom = false> for debugging.
   // When set to false, cache will continue functioning
   // but immitate a hit failure, forcing ipfs query from
   // Data.read()  
   static cache = new Datums(100);
+
+  static source = new IPFS_Provider();
+
+  static sink = new IPFS_Provider();
 
   // used when authenticating a block and requesting a cid from ipfs/block/put
   static codecForCID(cid){
@@ -145,37 +159,48 @@ class Data {
   // returns an instance of calling class read from cid
   static async read(cid, keys=null, codec=cbor){
     cid = CID.asCID(cid) ? cid : CID.parse(cid);
-    const cached = Data.cache.fetch({cid: cid});
+    const cached = this.cache.fetch({cid: cid});
     if(cached){
       console.log(`read ${cached.cid.toString()} from cache`);
       return Promise.resolve(cached)      
     }
 
-    let bytes = await request(`${IPFS_GATEWAY}/${cid.toString()}`, {headers: {"Accept": "application/vnd.ipld.raw"}});
-
-    bytes = new Uint8Array(bytes);
+    if(this.source.url)
+      var rawBytes = await request(this.source.url(cid), {headers: {"Accept": "application/vnd.ipld.raw"}});
+    else
+      var rawBytes = Object.values(JSON.parse(localStorage.getItem(cid.toString())));
+    // rawBytes are either an ArrayBuffer or Array
+    rawBytes = new Uint8Array(rawBytes);
+    // block.create() checks bytes received against their address (cid)
     if(keys){
-      var block = await Block.create({bytes: bytes, cid, codec: this.codecForCID(cid), hasher});
-      bytes = await Data.open(block.bytes, keys);
+      var block = await Block.create({bytes: rawBytes, cid, codec: this.codecForCID(cid), hasher});
+      const bytes = await this.open(block.bytes, keys);
       block = await Block.decode({bytes: bytes, codec, hasher})
     } else {
       var block = await Block.create({bytes: bytes, cid, codec: this.codecForCID(cid), hasher})
     }
 
     const instance = new this(block);
-    instance.#cid = cid;
+    if(keys)
+      instance.#encryptedBytes = rawBytes;
+    instance.#size = rawBytes.byteLength;
     instance.#ephemeral = false;
-    instance.#size = bytes.byteLength;
-    Data.cache.add(instance);
+    instance.#cid = cid;
+    this.cache.add(instance);
     await instance.ready
     return instance
   }
 
   async persist(name=''){
+    const bytes = this.#encryptedBytes.byteLength === 0 ? this.#block.bytes : this.#encryptedBytes;
+    this.#size = bytes.byteLength;
+    this.#ephemeral = false;
+    if(!Data.sink.url)
+      return Promise.resolve(localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes)))
     return request(
-        IPFS_BLOCK_PUT_URL(this.#cid),
+        Data.sink.url(this.#cid),
         new mfdOpts([{
-          data: this.#encryptedBytes.byteLength === 0 ? this.#block.bytes : this.#encryptedBytes,
+          data: bytes,
           type: "application/octet-stream",
           'name': name
         }])
@@ -183,19 +208,15 @@ class Data {
       .catch(error => console.error(`http.request produced error: `, error))
       .then(response => {
         const writeResponse = JSON.parse(response);
-        this.#size = parseInt(writeResponse.Size);
 console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
-        this.#ephemeral = false;
       })
   }
 
   // write ciphertext if keys are provided
   // calls can be edited to omit name parameter (because I split off persist())
   async write(name='', keys=null, cache=true){
-    if(!cache && !toIPFS)
-      throw new Error(`calls to data.write() must set cache or toIPFS true`)
     await this.#ready;
     let block = this.#block;
     if(keys){
@@ -206,12 +227,6 @@ console.log(`wrote ${this.name} at ${writeResponse.Key}`);
     this.#cid = block.cid;
     if(cache)
       Data.cache.add(this);
-
-    // To write to IPFS /block/put you must supply below YOUR_IPFS http api root to request()
-    // to write to YOUR_IPFS /block/put endpoint, remove the next line of code
-    //return this
-    // Remove the preceeding line to write to your IPFS /block/put endpoint
-    // To write to IPFS /block/put you must supply below YOUR_IPFS http api root
 
     this.#ephemeral = true;
     return this

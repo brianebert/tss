@@ -17,7 +17,7 @@ export class SetOf {
 
   // add object to cache from its front
   add(proposed){
-    if(this?.size && this.size === this.#members.length)
+    if(this.size === this.#members.length)
       this.#members.pop();
     const index = this.#members.findIndex(member => this.#equals(member, proposed));
     if(index !== -1)
@@ -31,7 +31,7 @@ export class SetOf {
     if(index === -1)
       return null
     if(this.#readFrom)
-      return this.#members[index]
+      return this.#members[index] // CHANGE THIS TO .at() and implement in Members above
     return null  
   }
 

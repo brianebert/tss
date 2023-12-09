@@ -38,6 +38,10 @@ export class SigningAccount extends StellarAccount {
     return this.#shareKX
   }
 
+  static async canSign(account){
+    return account.ed25519 || await wallet.isConnected()
+  }
+
   // creates SigningAccount from wallet imported
   static async fromWallet(){
     console.log(`working with wallet: `, wallet);
@@ -66,7 +70,7 @@ export class SigningAccount extends StellarAccount {
           // ed25519 seed needs to be extracted for Stellar Keypair
           this.#ed25519 = {sk: keys.ed25519.sk.slice(0, 32),
                            pk: keys.ed25519.pk};
-          return keys
+          return this
         })
         .catch(err => {
           console.error(`Error deriving app's encryption keys: `, err);

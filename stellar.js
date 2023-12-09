@@ -43,6 +43,10 @@ export class StellarAccount {
     return this.#watcher
   }
 
+  get id(){
+    return this.#account.id
+  }
+  
   // returns Buffer containing account.data[label]
   static async dataEntry(account, label){
     if(account instanceof StellarAccount)

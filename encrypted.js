@@ -28,7 +28,7 @@ class Encrypted_Node extends COL_Node {
   }
 
   static async fromSigningAccount(account, dataRootLabel, keys=null){
-    const root = await SigningAccount.dataEntry(account.account.id, dataRootLabel);
+    const root = await SigningAccount.dataEntry(account, dataRootLabel);
     console.log(`looked up data root: ${root.toString()}`)
     if(root.length === 0){
       var node = new this({colName: dataRootLabel}, account, dataRootLabel);
@@ -42,11 +42,16 @@ class Encrypted_Node extends COL_Node {
   }
 
   static async persist(account, label, cid, keys){
-    async function writeBlock(node){
-      if(node.ephemeral)
-        await node.persist(node.name)
+    const graph = []; // (hopefully) will use later cleaning cache and local storage
+    const persistAll = !this.source.url !== !this.sink.url;
+    async function writeNode(node){
+      graph.push(node.cid.toString());
+      if(persistAll || node.ephemeral)
+        await node.persist(node.name);
     }
-    await this.traverse(cid, writeBlock, keys)
+    await this.traverse(cid, writeNode, keys);
+    // clean cache and localStorage here
+    return console.log(`setting data entry for ${label}: `, cid.toString());
     return account.setDataEntry(label, cid.toString());
   }
 
