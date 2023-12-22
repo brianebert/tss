@@ -38,8 +38,54 @@ export class SigningAccount extends StellarAccount {
     return this.#shareKX
   }
 
+  get keys(){
+    return {
+      readFrom: async (writer, pubLickeyLabel) => {
+        if(!this.#ec25519)
+          return Promise.resolve(null)
+        if(writer === 'self')
+          return Promise.resolve({
+            reader: this.#ec25519.sk,
+            writer: this.#ec25519.pk
+          })
+        if(StrKey.isValidEd25519PublicKey(writer))
+          return SigningAccount.load(writer).then(account => 
+            Object.create({
+              writer: Buffer.from(account.data[pubLickeyLabel], 'base64'),
+              reader: this.#ec25519.sk
+            })
+          )
+      },
+      writeTo: async (reader, pubLickeyLabel) => {
+        if(!this.#ec25519)
+          return Promise.resolve(null)
+        if(reader === 'self')
+          return Promise.resolve({
+            reader: this.#ec25519.pk,
+            writer: this.#ec25519.sk
+          })
+        if(StrKey.isValidEd25519PublicKey(reader))
+          return SigningAccount.load(reader).then(account => Object.create({
+            reader: Buffer.from(account.data[pubLickeyLabel], 'base64'),
+            writer: this.#ec25519.sk
+          }))
+      },
+      // returns {rx: libsodium.crypto_kx_server_session_keys(keys.pk, keys.sk, pk).sharedRx,
+      //          tx: libsodium.crypto_kx_client_session_keys(keys.pk, keys.sk, pk).sharedTx}
+      // select rx or tx appropriately whether writing to or reading from someone else
+      sharedWith: async (accountId, pubLickeyLabel) => {
+        if(!this.#shareKX)
+          return Promise.resolve(null)
+        if(StrKey.isValidEd25519PublicKey(accountId))
+          return SigningAccount.load(accountId)
+            .then(account => Buffer.from(account.data[pubLickeyLabel], 'base64'))
+            .then(pk => Sodium.sharedKeys(this.#shareKX, pk))
+      }
+    }
+  }
+
   static async canSign(account){
-    return account.ed25519 || await wallet.isConnected()
+    return !!account.ed25519 || await wallet.isConnected()
   }
 
   // creates SigningAccount from wallet imported
@@ -100,15 +146,5 @@ export class SigningAccount extends StellarAccount {
       return wallet.signTransaction(myPhrase.toXDR()).then(theThen.bind(this))
     else
       throw new Error(`Freighter account does not match Signing Account`)
-  }
-
-  // returns {rx: libsodium.crypto_kx_server_session_keys(keys.pk, keys.sk, pk).sharedRx,
-  //          tx: libsodium.crypto_kx_client_session_keys(keys.pk, keys.sk, pk).sharedTx}
-  // select rx or tx appropriately whether writing to or reading from someone else
-  async sharedKeys(account, label){
-    if(typeof account === 'string' && StrKey.isValidEd25519PublicKey(account))
-      return await request(`${HORIZON}/accounts/${account}`)
-        .then(response => Buffer.from(JSON.parse(response).data[label], 'base64'))
-        .then(pk => Sodium.sharedKeys(this.#shareKX, pk))
   }
 }

@@ -59,7 +59,7 @@ export class StellarAccount {
   }
 
   static load(accountId){
-    return request(`${HORIZON}/accounts/${accountId}`)
+    return request(`${HORIZON}/accounts/${accountId}`).then(result => JSON.parse(result))
   }
 
   // returns cid from 32 byte memoHash
@@ -202,7 +202,7 @@ export class StellarAccount {
 
   // get current on chain account state.
   reload(){
-    return StellarAccount.load(this.account.id).then(response => this.#account = JSON.parse(response))
+    return StellarAccount.load(this.account.id).then(account => this.#account = account)
   }
 
   // returns Buffer of value for account.data[label]

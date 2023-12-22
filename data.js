@@ -36,7 +36,7 @@ class Datums extends SetOf {
 // wraps a multiformats block in accessors, caching, and methods for writing and reading
 // to and from ipfs with asymetric and shared key libsodium encryption
 class Data {
-  #block; #cid; #encryptedBytes; #ephemeral; #ready; #sink; #size; #source;
+  #block; #cid; #encryptedBytes; #ephemeral; #ready; #size;
   constructor(data, codec=cbor){
     this.codec = codec;
     if(data instanceof Block.Block){
@@ -112,9 +112,9 @@ class Data {
   // Data.read()  
   static cache = new Datums(100);
 
-  static source = new IPFS_Provider();
-
+  // 
   static sink = new IPFS_Provider();
+  static source = new IPFS_Provider();
 
   // used when authenticating a block and requesting a cid from ipfs/block/put
   static codecForCID(cid){
@@ -177,7 +177,7 @@ class Data {
       const bytes = await this.open(block.bytes, keys);
       block = await Block.decode({bytes: bytes, codec, hasher})
     } else {
-      var block = await Block.create({bytes: bytes, cid, codec: this.codecForCID(cid), hasher})
+      var block = await Block.create({bytes: rawBytes, cid, codec: this.codecForCID(cid), hasher})
     }
 
     const instance = new this(block);
@@ -205,13 +205,19 @@ class Data {
           'name': name
         }])
       )
-      .catch(error => console.error(`http.request produced error: `, error))
       .then(response => {
         const writeResponse = JSON.parse(response);
 console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
+        return request(Data.sink.url(writeResponse.Key), {method: 'POST'})
       })
+      .then(response => {
+        const pinResponse = JSON.parse(response);
+        if(!pinResponse.Pins.includes(this.#cid.toString()))
+          throw new Error(`was not able to pin ${this.#cid.toString()} pinResponse: `, pinResponse)
+      })
+      .catch(error => console.error(`error persisting ${this.name}: `, error))
   }
 
   // write ciphertext if keys are provided

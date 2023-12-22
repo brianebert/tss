@@ -72,6 +72,7 @@ class IPFS_COL_Node extends Data {
           haveTraversed.add(cid.toString());
           for(const link of Object.keys(instance.links))
             if(!link.endsWith('_last')){
+console.log(`traversing link ${link}: `, instance.links[link]);          
               const subGraph = await recurse(instance.links[link], fn, keys, depth + 1);
               instance.value[link] = subGraph.cid;
               if(!subGraph.parents.map(parent => parent.cid.toString()).includes(instance.cid.toString()))
@@ -107,7 +108,7 @@ class IPFS_COL_Node extends Data {
     value['inserted_at'] = new Date().toUTCString();
     node.value = value;
     return node.write(node?.name?node.name:'', keys)
-               .then(writeResult => IPFS_COL_Node.bubbleBubble(node, keys)) 
+               .then(() => IPFS_COL_Node.bubbleBubble(node, keys)) 
   }
 
   // change value of self

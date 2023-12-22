@@ -41,16 +41,20 @@ class Encrypted_Node extends COL_Node {
     return node
   }
 
-  static async persist(account, label, cid, keys){
-    const graph = []; // (hopefully) will use later cleaning cache and local storage
+  static async persist(account, label, cid, keys=null){
+    const graphNodes = []; // (hopefully) will use later cleaning cache and local storage
     const persistAll = !this.source.url !== !this.sink.url;
     async function writeNode(node){
-      graph.push(node.cid.toString());
+      graphNodes.push(node.cid.toString());
       if(persistAll || node.ephemeral)
         await node.persist(node.name);
     }
     await this.traverse(cid, writeNode, keys);
     // clean cache and localStorage here
+    for(const member of this.cache.filter(member => !graphNodes.includes(member.cid.toString())))
+      console.log(`planning to delete ${member.cid.toString()} from cache`); 
+    for(const key of Object.keys(localStorage).filter(key => !graphNodes.includes(key)))
+      //localStorage.removeItem(key);   
     console.log(`setting data entry for ${label}: `, cid.toString());
     return account.setDataEntry(label, cid.toString());
   }
