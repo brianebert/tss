@@ -45,7 +45,7 @@ class Data {
       this.#encryptedBytes = new Uint8Array(0)
       this.#ephemeral = true;
       this.#size = data.byteLength;
-      this.#ready = Promise.resolve();
+      this.#ready = Promise.resolve(this);
     }
     else {
       this.value = data;
@@ -99,10 +99,11 @@ class Data {
       this.#ready = Block.encode({value: obj, codec: raw, hasher}).then(theThen.bind(this))
     }
     function theThen(block){
+      this.#size = block.byteLength;
+      this.#ephemeral = true;
       this.#cid = block.cid;
       this.#block = block;
-      this.#ephemeral = true;
-      this.#size = block.byteLength;
+      return this
     };    
   }
     
@@ -125,6 +126,15 @@ class Data {
   // call read() instead now
   static fromCID(cid, keys=null){
     return this.read(cid, keys)
+  }
+
+  static isValidAddress(address){
+    try {
+      CID.parse(address);
+      return true
+    } catch(err){
+      return false
+    }
   }
 
   // encrypts with cipher selected by key properties
