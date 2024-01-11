@@ -85,13 +85,19 @@ export class SigningAccount extends StellarAccount {
   }
 
   static async canSign(account){
-    return !!account.ed25519 || await wallet.isConnected()
+    if(!!account.ed25519)
+      return Promise.resolve(account.id)
+    if(await wallet.isConnected())
+      return wallet.getPublicKey()
+    return Promise.resolve(null)
   }
 
   // creates SigningAccount from wallet imported
-  static async fromWallet(){
+  static async fromWallet(accountId=null){
     console.log(`working with wallet: `, wallet);
     console.log(`in a browser: `, wallet.isBrowser);
+    if(accountId)
+      return Promise.resolve(this(accountId))
     if(wallet?.isBrowser && await wallet.isConnected())
       return wallet.getPublicKey().then(address => new this(address))
     return Promise.resolve(null)

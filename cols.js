@@ -17,6 +17,7 @@ class IPFS_COL_Node extends Data {
       data['created_at'] = new Date().toUTCString();
     super(data);
     this.#parents = [];
+console.log(`created IPFS_COL_Node: `, this);
   }
 
   get parents(){

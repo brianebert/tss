@@ -5,12 +5,15 @@ import {COL_Node} from './cols.js';
 class Encrypted_Node extends COL_Node {
   #dataRootLabel; #signingAccount;
   constructor(value, signingAccount, dataRootLabel=null){
+console.log(`creating Encrypted_Node from value `, value);
+console.log(`and SigningAccount `, signingAccount);
     if(!signingAccount instanceof SigningAccount)
       throw new Error(`called Encrypted_Node constructor with signingAccount = `, signingAccount)
     super(value);
     this.#signingAccount = signingAccount;
     if(dataRootLabel)
       this.#dataRootLabel = dataRootLabel;
+console.log(`created Encrypted_Node: `, this);
   }
 
   get signingAccount(){
