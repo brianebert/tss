@@ -92,7 +92,7 @@ console.log(`traversing link ${link}: `, instance.links[link]);
   async delete(keys){
     await this.ready;
     console.log(`deleting ${this.name}`)
-    Data.cache.remove(this);
+    Data.rm(this.cid);
     this.cid = undefined;
     return IPFS_COL_Node.bubbleBubble(this, keys)
   }
@@ -128,6 +128,7 @@ console.log(`traversing link ${link}: `, instance.links[link]);
     for(let key of Object.keys(updates))
       value[key] = updates[key];
     value['updated_at'] = new Date().toUTCString();
+    value[`${this.name}_last`] = this.cid;
     this.value = value;
     return this.write(this.name, keys)
                .then(writeResult => IPFS_COL_Node.bubbleBubble(this, keys))

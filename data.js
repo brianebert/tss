@@ -129,15 +129,6 @@ console.log(`constructing Data instance with data = `, data);
     return this.read(cid, keys)
   }
 
-  static isValidAddress(address){
-    try {
-      CID.parse(address);
-      return true
-    } catch(err){
-      return false
-    }
-  }
-
   // encrypts with cipher selected by key properties
   static async lock(plainText, keys=null){  // returns a Uint8Array
     if(keys === null)
@@ -202,13 +193,48 @@ console.log(`constructing Data instance with data = `, data);
     return instance
   }
 
+  static rm(cid){
+    cid = CID.asCID(cid) ? cid : CID.parse(cid);
+    const cached = this.cache.fetch({cid: cid});
+    if(cached)
+      this.cache.remove({cid: cid});
+    if(!this.sink.url){
+      console.log(`would remove ${cid.toString()} from localStorage`);
+      return Promise.resolve(localStorage.removeItem(cid.toString()))
+    }
+    // calling sink.url() with string returns pin/add url
+    return request(
+        this.sink.url(cid.toString()).replace('add', 'ls'), {method: 'POST'}
+      )
+      .then(response => JSON.parse(response))
+      .then(pin => {
+        console.log(`rm(${cid.toString()}) found pin: `, pin);
+        return request(this.sink.url(cid.toString()).replace('add', 'rm'), {method: 'POST'})
+      })
+      .then(response => JSON.parse(response))
+      .then(unPin => console.log(`unpinned: `, unPin))
+      .catch(err => 
+        console.error(`error unpinning ${cid.toString()}:`, err)
+      )
+  }
+
   async persist(name=''){
     const bytes = this.#encryptedBytes.byteLength === 0 ? this.#block.bytes : this.#encryptedBytes;
     this.#size = bytes.byteLength;
     this.#ephemeral = false;
-    if(!Data.sink.url)
+    let lastAddress = false;
+    if(Object.hasOwn(this.links, `${this.name}_last`))
+      lastAddress = this.links[`${this.name}_last`].toString();
+    if(!Data.sink.url){
+      if(Object.hasOwn(localStorage, lastAddress)){
+        console.log(`removing ${lastAddress} from `, localStorage);
+        localStorage.removeItem(lastAddress);
+      }
+      console.log(`adding ${this.#cid.toString()} to `, localStorage);
       return Promise.resolve(localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes)))
+    }
     return request(
+      // calling sink.url() with a cid returns a block/put url
         Data.sink.url(this.#cid),
         new mfdOpts([{
           data: bytes,
@@ -216,17 +242,26 @@ console.log(`constructing Data instance with data = `, data);
           'name': name
         }])
       )
-      .then(response => {
+      .then(async response => {
         const writeResponse = JSON.parse(response);
 console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
-        return request(Data.sink.url(writeResponse.Key), {method: 'POST'})
+        const pinReqs = [request(Data.sink.url(writeResponse.Key), {method: 'POST'})];
+        if(lastAddress) await request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'})
+          .then(response => {
+            pinReqs.push(request(Data.sink.url(lastAddress).replace('add', 'rm'), {method: 'POST'}));
+          })
+          .catch(err => {
+            console.log(`${lastAddress} was not pinned. `, err);
+          })
+        console.log(`pinning with: `, pinReqs);
+        return Promise.all(pinReqs)
       })
-      .then(response => {
-        const pinResponse = JSON.parse(response);
-        if(!pinResponse.Pins.includes(this.#cid.toString()))
-          throw new Error(`was not able to pin ${this.#cid.toString()} pinResponse: `, pinResponse)
+      .then(([addResponse, rmResponse]) => {
+        const added = JSON.parse(addResponse);
+        if(!added.Pins.includes(this.#cid.toString()))
+          throw new Error(`was not able to pin ${this.#cid.toString()} pinResponse: `, added)
       })
       .catch(error => console.error(`error persisting ${this.name}: `, error))
   }
