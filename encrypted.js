@@ -46,24 +46,27 @@ console.log(`created Encrypted_Node: `, this);
 
   static async persist(account, label, cid, keys=null){
     const graphNodes = []; // (hopefully) will use later cleaning cache and local storage
-    const persistAll = !this.source.url !== !this.sink.url;
+    const persistAll = this.blockParameters.persistAll;
     async function writeNode(node){
       graphNodes.push(node.cid.toString());
       if(persistAll || node.ephemeral)
         await node.persist(node.name);
     }
-    await this.traverse(cid, writeNode, keys);
+    if(this.blockParameters.traverse.value)
+      await this.traverse(cid, writeNode, keys);
+    else
+      await this.read(cid, keys).then(writeNode);
     // clean cache and localStorage here
     for(const member of this.cache.filter(member => !graphNodes.includes(member.cid.toString())))
       console.log(`planning to delete ${member.cid.toString()} from cache`); 
     for(const key of Object.keys(localStorage).filter(key => !graphNodes.includes(key)))
-      //localStorage.removeItem(key);   
+      //localStorage.removeItem(key);
     console.log(`setting data entry for ${label}: `, cid.toString());
     return account.setDataEntry(label, cid.toString());
   }
 
   // linking plaintext depends upon depth first COL_Node.traverse()
-  static async publishPlaintext(root, keys, docName=null){
+  /*static async publishPlaintext(root, keys, docName=null){
     if(!keys){
       if(window?.alert)
         window.alert(`publishPlaintext() was not provided keys. is document plaintext already?`);
@@ -85,7 +88,7 @@ console.log(`created Encrypted_Node: `, this);
     await this.persist(root.signingAccount, docName, ptLinks[ptRoot.cid.toString()], keys);
     console.log(`${root.signingAccount.account.id} has set ${docName} to ${ptLinks[ptRoot.cid.toString()].toString()}`);
     // Should purge cache of plaintext blocks here
-  }
+  }*/
 }
 
 export {Encrypted_Node};

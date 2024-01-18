@@ -107,7 +107,7 @@ console.log(`constructing Data instance with data = `, data);
       return this
     };    
   }
-    
+  
   // you can set <cache.readFrom = false> for debugging.
   // When set to false, cache will continue functioning
   // but immitate a hit failure, forcing ipfs query from
