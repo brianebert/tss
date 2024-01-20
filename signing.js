@@ -12,19 +12,35 @@ const HORIZON = 'https://horizon.stellar.org';
 
 // repository for keys derived to automate encryption, decryption and block chain use
 export class SigningAccount extends StellarAccount {
+  #canSign;
   #ec25519; // hex string for asymetric encryption
   #ed25519; // a Stellar Keypair for automated signing
   #shareKX; // hex string key pair for key shared key exchange
-  constructor(address, keys=null){
+  #ready;
+  constructor(address, secret=null, constants={asymetric: 'Asymetric', signing: 'Signing', shareKX: 'ShareKX'}){
     if(!StrKey.isValidEd25519PublicKey(address))
       throw new Error(`SigningAccount requires valid Ed25519 Public Key as arguement.`)
-    super(address, keys);
-    this.#ec25519 = keys?.ec25519 ? keys.ec25519 : null;
-    this.#ed25519 = keys?.ed25519 ? keys.ed25519 : null;
-    this.#shareKX = keys?.shareKX ? keys.shareKX : null;
+    super(address);
+    this.#canSign = false;
+    this.#ec25519 = this.#ed25519 = this.#shareKX = null;
+    this.#ready = new Promise(resolve => {
+      return this.deriveKeys(secret, constants)
+         .then(() => {
+           this.#canSign = true;
+           resolve(true)
+         })
+         .catch(err => {
+           console.error(`did not derive SigningAccount keys because: `, err);
+           this.#canSign = false;
+           resolve(true)
+         })
+    })
   }
 
   // access the keys
+  get canSign(){
+    return this.#canSign;
+  }
 
   get ec25519(){
     return this.#ec25519
@@ -36,6 +52,10 @@ export class SigningAccount extends StellarAccount {
 
   get shareKX(){
     return this.#shareKX
+  }
+
+  get ready(){
+    return this.#ready
   }
 
   get keys(){
@@ -85,22 +105,22 @@ export class SigningAccount extends StellarAccount {
   }
 
   // creates SigningAccount from wallet imported
-  static async fromWallet(accountId=null){
+  static async checkForWallet(accountId=null, secret=null){
     console.log(`working with wallet: `, wallet);
     console.log(`in a browser: `, wallet.isBrowser);
     if(accountId)
-      return Promise.resolve(this(accountId))
+      return Promise.resolve(this(accountId, secret))
     if(wallet?.isBrowser && await wallet.isConnected())
       return wallet.getPublicKey().then(address => new this(address))
     return Promise.resolve(null)
   }
 
-  async canSign(){
-    if(!!this.ed25519)
-      return Promise.resolve(this.id)
+  static async canSign(account){
+    if(!!account.ed25519)
+      return Promise.resolve(true)
     if(await wallet.isConnected())
-      return wallet.getPublicKey()
-    return Promise.resolve(null)
+      return account.deriveKeys()
+    return Promise.resolve(false)
   }
 
   // uses a signature as randomness input.
@@ -126,6 +146,7 @@ export class SigningAccount extends StellarAccount {
         })
         .catch(err => {
           console.error(`Error deriving app's encryption keys: `, err);
+          throw new Error(`Threw error deriving app's encryption keys`)
         })
     }
 
