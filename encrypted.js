@@ -44,7 +44,10 @@ console.log(`created Encrypted_Node: `, this);
     return node
   }
 
-  static async persist(account, label, cid, keys=null){
+  static async persist(root, keys=null){
+    const signingAccount = root.signingAccount;
+    const name = root.#dataRootLabel;
+    const cid = rood.cid;
     const graphNodes = []; // (hopefully) will use later cleaning cache and local storage
     const persistAll = this.blockParameters.persistAll;
     async function writeNode(node){
@@ -62,8 +65,10 @@ console.log(`created Encrypted_Node: `, this);
     for(const key of Object.keys(localStorage).filter(key => !graphNodes.includes(key)))
       //localStorage.removeItem(key);
     console.log(`setting data entry for ${label}: `, cid.toString());
-    return account.setDataEntry(label, cid.toString());
+    return signingAccount.setDataEntry(name, cid.toString());
   }
+
+  static SigningAccount = SigningAccount;
 
   // linking plaintext depends upon depth first COL_Node.traverse()
   /*static async publishPlaintext(root, keys, docName=null){
