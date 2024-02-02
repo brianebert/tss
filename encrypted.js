@@ -4,21 +4,26 @@ import {COL_Node} from './cols.js';
 // combines SigningAccount keys with COL_Node
 class Encrypted_Node extends COL_Node {
   #dataRootLabel; #signingAccount;
-  constructor(value, signingAccount, dataRootLabel=null){
+  constructor(value, signingAccount, dataRootLabel=''){
 console.log(`creating Encrypted_Node from value `, value);
 console.log(`and SigningAccount `, signingAccount);
     if(!signingAccount instanceof SigningAccount)
       throw new Error(`called Encrypted_Node constructor with signingAccount = `, signingAccount)
     super(value);
     this.#signingAccount = signingAccount;
-    if(dataRootLabel)
-      this.#dataRootLabel = dataRootLabel;
+    this.#dataRootLabel = dataRootLabel;
 console.log(`created Encrypted_Node: `, this);
   }
 
   get signingAccount(){
     return this.#signingAccount
   }
+
+  set dataRootLabel(label){ // setting dataRootLabel will write a node's hash to Stellar
+    return this.#dataRootLabel = typeof label === 'string' ? label : ''
+  }
+
+  static blockParameters;
 
   static async fromCID(account, cid, keys=null){
     if(!account instanceof SigningAccount)
@@ -45,27 +50,24 @@ console.log(`created Encrypted_Node: `, this);
   }
 
   static async persist(root, keys=null){
-    const signingAccount = root.signingAccount;
-    const name = root.#dataRootLabel;
-    const cid = rood.cid;
     const graphNodes = []; // (hopefully) will use later cleaning cache and local storage
-    const persistAll = this.blockParameters.persistAll;
     async function writeNode(node){
       graphNodes.push(node.cid.toString());
-      if(persistAll || node.ephemeral)
+      if(this.blockParameters.persistAll || node.ephemeral)
         await node.persist(node.name);
     }
     if(this.blockParameters.traverse.value)
-      await this.traverse(cid, writeNode, keys);
+      await this.traverse(root.cid, writeNode.bind(this), keys);
     else
-      await this.read(cid, keys).then(writeNode);
+      writeNode.bind(this)(root);
     // clean cache and localStorage here
     for(const member of this.cache.filter(member => !graphNodes.includes(member.cid.toString())))
       console.log(`planning to delete ${member.cid.toString()} from cache`); 
     for(const key of Object.keys(localStorage).filter(key => !graphNodes.includes(key)))
       //localStorage.removeItem(key);
-    console.log(`setting data entry for ${label}: `, cid.toString());
-    return signingAccount.setDataEntry(name, cid.toString());
+    console.log(`setting data entry for ${root.#dataRootLabel}: `, root.cid.toString());
+    if(root.#dataRootLabel.length)
+      return root.signingAccount.setDataEntry(root.#dataRootLabel, root.cid.toString());
   }
 
   static SigningAccount = SigningAccount;

@@ -199,7 +199,7 @@ console.log(`constructing Data instance with data = `, data);
     if(cached)
       this.cache.remove({cid: cid});
     if(!this.sink.url){
-      console.log(`would remove ${cid.toString()} from localStorage`);
+      console.log(`removing ${cid.toString()} from localStorage`);
       return Promise.resolve(localStorage.removeItem(cid.toString()))
     }
     // calling sink.url() with string returns pin/add url
