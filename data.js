@@ -227,8 +227,8 @@ console.log(`constructing Data instance with data = `, data);
       lastAddress = this.links[`${this.name}_last`].toString();
     if(!Data.sink.url){
       if(Object.hasOwn(localStorage, lastAddress)){
-        console.log(`removing ${lastAddress} from `, localStorage);
-        localStorage.removeItem(lastAddress);
+        console.log(`would remove last address of ${this.name}, ${lastAddress}, from localStorage`);
+        //localStorage.removeItem(lastAddress);
       }
       console.log(`adding ${this.#cid.toString()} to `, localStorage);
       return Promise.resolve(localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes)))
