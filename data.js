@@ -38,7 +38,6 @@ class Datums extends SetOf {
 class Data {
   #block; #cid; #encryptedBytes; #ephemeral; #ready; #size;
   constructor(data, codec=cbor){
-console.log(`constructing Data instance with data = `, data);
     this.codec = codec;
     if(data instanceof Block.Block){
       this.#block = data;

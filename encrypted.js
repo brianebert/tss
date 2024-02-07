@@ -5,14 +5,11 @@ import {COL_Node} from './cols.js';
 class Encrypted_Node extends COL_Node {
   #dataRootLabel; #signingAccount;
   constructor(value, signingAccount, dataRootLabel=''){
-console.log(`creating Encrypted_Node from value `, value);
-console.log(`and SigningAccount `, signingAccount);
     if(!signingAccount instanceof SigningAccount)
       throw new Error(`called Encrypted_Node constructor with signingAccount = `, signingAccount)
     super(value);
     this.#signingAccount = signingAccount;
     this.#dataRootLabel = dataRootLabel;
-console.log(`created Encrypted_Node: `, this);
   }
 
   get signingAccount(){
@@ -63,11 +60,11 @@ console.log(`created Encrypted_Node: `, this);
     // clean cache and localStorage here
     for(const member of this.cache.filter(member => !graphNodes.includes(member.cid.toString())))
       console.log(`planning to delete ${member.cid.toString()} from cache`); 
-    for(const key of Object.keys(localStorage).filter(key => !graphNodes.includes(key)))
-      //localStorage.removeItem(key);
-    console.log(`setting data entry for ${root.#dataRootLabel}: `, root.cid.toString());
-    if(root.#dataRootLabel.length)
+
+    if(root.#dataRootLabel.length){
+      console.log(`setting data entry for ${root.#dataRootLabel}: `, root.cid.toString());
       return root.signingAccount.setDataEntry(root.#dataRootLabel, root.cid.toString());
+    }
   }
 
   static SigningAccount = SigningAccount;
