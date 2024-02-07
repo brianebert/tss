@@ -92,6 +92,10 @@ class Data {
     return this.#cid = theCid
   }
 
+  set ephemeral(state){
+    return this.#ephemeral = state
+  }
+
   set value(obj){
     try{
       this.#ready = Block.encode({value: obj, codec: this.codec, hasher}).then(theThen.bind(this))
@@ -224,14 +228,19 @@ class Data {
     let lastAddress = false;
     if(Object.hasOwn(this.links, `${this.name}_last`))
       lastAddress = this.links[`${this.name}_last`].toString();
-    if(!Data.sink.url){
-      if(Object.hasOwn(localStorage, lastAddress)){
-        console.log(`would remove last address of ${this.name}, ${lastAddress}, from localStorage`);
-        //localStorage.removeItem(lastAddress);
+    if(!Data.sink.url)
+      try{
+        localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes));
+        console.log(`added ${this.name}, ${this.#cid.toString()} to localStorage`);
+        if(Object.hasOwn(localStorage, lastAddress)){
+          localStorage.removeItem(lastAddress);
+          console.log(`removed last address of ${this.name}, ${lastAddress}, from localStorage`);
+        }
+        return Promise.resolve(this)
+      } catch (err) {
+        console.error(`failed to save ${this.name} correctly: `, err);
+        return Promise.reject(this)
       }
-      console.log(`adding ${this.#cid.toString()} to `, localStorage);
-      return Promise.resolve(localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes)))
-    }
     return request(
       // calling sink.url() with a cid returns a block/put url
         Data.sink.url(this.#cid),
