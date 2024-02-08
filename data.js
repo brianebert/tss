@@ -76,7 +76,7 @@ class Data {
   get links(){
     const links = {};
     for(const [name, cid] of this.#block.links())
-      links[name] = cid.toString();
+      links[name] = cid;
     return links
   }
 
