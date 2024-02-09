@@ -58,8 +58,8 @@ class Encrypted_Node extends COL_Node {
     else
       writeNode.bind(this)(root);
     // clean cache and localStorage here
-    for(const member of this.cache.filter(member => !graphNodes.includes(member.cid.toString())))
-      console.log(`planning to delete ${member.cid.toString()} from cache`); 
+    //for(const member of this.cache.filter(member => !graphNodes.includes(member.cid.toString())))
+      //console.log(`cache member ${member.cid.toString()} not part of graph`); 
 
     if(root.#dataRootLabel.length){
       console.log(`setting data entry for ${root.#dataRootLabel}: `, root.cid.toString());
@@ -70,7 +70,7 @@ class Encrypted_Node extends COL_Node {
   static SigningAccount = SigningAccount;
 
   // linking plaintext depends upon depth first COL_Node.traverse()
-  /*static async publishPlaintext(root, keys, docName=null){
+  static async publishPlaintext(root, keys, docName=null){
     if(!keys){
       if(window?.alert)
         window.alert(`publishPlaintext() was not provided keys. is document plaintext already?`);
@@ -92,7 +92,7 @@ class Encrypted_Node extends COL_Node {
     await this.persist(root.signingAccount, docName, ptLinks[ptRoot.cid.toString()], keys);
     console.log(`${root.signingAccount.account.id} has set ${docName} to ${ptLinks[ptRoot.cid.toString()].toString()}`);
     // Should purge cache of plaintext blocks here
-  }*/
+  }
 }
 
 export {Encrypted_Node};
