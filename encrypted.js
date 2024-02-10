@@ -20,7 +20,13 @@ class Encrypted_Node extends COL_Node {
     return this.#dataRootLabel = typeof label === 'string' ? label : ''
   }
 
-  static blockParameters;
+  static bP;
+  static get blockParameters(){
+    return this.bP
+  }
+  static set blockParameters(bP){
+    this.bP = bP;
+  }
 
   static async fromCID(account, cid, keys=null){
     if(!account instanceof SigningAccount)
@@ -46,25 +52,9 @@ class Encrypted_Node extends COL_Node {
     return node
   }
 
-  static async persist(root, keys=null){
-    const graphNodes = []; // (hopefully) will use later cleaning cache and local storage
-    async function writeNode(node){
-      graphNodes.push(node.cid.toString());
-      if(this.blockParameters.persistAll || node.ephemeral)
-        await node.persist(node.name);
-    }
-    if(this.blockParameters.traverse.value)
-      await this.traverse(root.cid, writeNode.bind(this), keys);
-    else
-      writeNode.bind(this)(root);
-    // clean cache and localStorage here
-    //for(const member of this.cache.filter(member => !graphNodes.includes(member.cid.toString())))
-      //console.log(`cache member ${member.cid.toString()} not part of graph`); 
-
-    if(root.#dataRootLabel.length){
-      console.log(`setting data entry for ${root.#dataRootLabel}: `, root.cid.toString());
-      return root.signingAccount.setDataEntry(root.#dataRootLabel, root.cid.toString());
-    }
+  static async copy(signingAccount, address, inKeys=null, outKeys=null, traverse=false){
+    const root = await this.fromCID(signingAccount, address, inKeys);
+    return root.copy(inKeys, outKeys, traverse);
   }
 
   static SigningAccount = SigningAccount;
@@ -93,6 +83,30 @@ class Encrypted_Node extends COL_Node {
     console.log(`${root.signingAccount.account.id} has set ${docName} to ${ptLinks[ptRoot.cid.toString()].toString()}`);
     // Should purge cache of plaintext blocks here
   }
+
+  async copy(inKeys=null, outKeys=null, traverse=false){
+console.log(`entered instance.copy with `, this, inKeys, outKeys);
+    const graphNodes = []; // (hopefully) will use later cleaning cache and local storage
+    async function writeNode(node){
+console.log(`entered writeNode(node) with node: `, node)
+      graphNodes.push(node.cid.toString());
+      await node.write('', null, false, false);
+    }
+    if(traverse)
+      await Encrypted_Node.traverse(this.cid, writeNode, inKeys);
+    else
+      writeNode(this);
+    // clean cache and localStorage here
+    //for(const member of this.cache.filter(member => !graphNodes.includes(member.cid.toString())))
+      //console.log(`cache member ${member.cid.toString()} not part of graph`); 
+
+    if(this.#dataRootLabel.length){
+      console.log(`setting data entry for ${this.#dataRootLabel}: `, root.cid.toString());
+      return this.signingAccount.setDataEntry(this.#dataRootLabel, root.cid.toString());
+    }
+  }
 }
+
+window.Encrypted_Node = Encrypted_Node;
 
 export {Encrypted_Node};

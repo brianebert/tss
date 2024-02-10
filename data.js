@@ -36,13 +36,13 @@ class Datums extends SetOf {
 // wraps a multiformats block in accessors, caching, and methods for writing and reading
 // to and from ipfs with asymetric and shared key libsodium encryption
 class Data {
-  #block; #cid; #encryptedBytes; #ephemeral; #ready; #size;
+  #block; #cid; #encryptedBytes; #ephemeral; #rawBytes; #ready; #size;
   constructor(data, codec=cbor){
     this.codec = codec;
     if(data instanceof Block.Block){
       this.#block = data;
       this.#cid = data.cid;
-      this.#encryptedBytes = new Uint8Array(0)
+      this.#rawBytes = new Uint8Array(0);
       this.#ephemeral = true;
       this.#size = data.byteLength;
       this.#ready = Promise.resolve(this);
@@ -166,7 +166,7 @@ class Data {
     cid = CID.asCID(cid) ? cid : CID.parse(cid);
     const cached = this.cache.fetch({cid: cid});
     if(cached){
-      console.log(`read ${cached.cid.toString()} from cache`);
+      //console.log(`read ${cached.cid.toString()} from cache`);
       return Promise.resolve(cached)      
     }
 
@@ -186,8 +186,7 @@ class Data {
     }
 
     const instance = new this(block);
-    if(keys)
-      instance.#encryptedBytes = rawBytes;
+    instance.#rawBytes = rawBytes;
     instance.#size = rawBytes.byteLength;
     instance.#ephemeral = false;
     instance.#cid = cid;
@@ -221,18 +220,28 @@ class Data {
       )
   }
 
-  async persist(name=''){
-    const bytes = this.#encryptedBytes.byteLength === 0 ? this.#block.bytes : this.#encryptedBytes;
+  async write(name='', keys=null, cache=true, deleteLast=true){
+    await this.#ready;
+    if(keys){
+      const cipherText = await Data.lock(this.#block.bytes, keys);
+      const block = await Block.encode({value: cipherText, codec: raw, hasher});
+      this.#rawBytes = block.bytes;
+      this.#cid = block.cid;
+    }
+    if(cache)
+      Data.cache.add(this);
+
+    const bytes = this.#cid.toString() === this.#block.cid.toString() ? this.#block.bytes : this.#rawBytes
+
     this.#size = bytes.byteLength;
-    this.#ephemeral = false;
-    let lastAddress = false;
-    if(Object.hasOwn(this.links, `${this.name}_last`))
-      lastAddress = this.links[`${this.name}_last`].toString();
+
+    const lastAddress = Object.hasOwn(this.links, `${this.name}_last`) ? this.links[`${this.name}_last`].toString() : false;
+
     if(!Data.sink.url)
       try{
         localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes));
         console.log(`added ${this.name}, ${this.#cid.toString()} to localStorage`);
-        if(Object.hasOwn(localStorage, lastAddress)){
+        if(deleteLast && Object.hasOwn(localStorage, lastAddress)){
           localStorage.removeItem(lastAddress);
           console.log(`removed last address of ${this.name}, ${lastAddress}, from localStorage`);
         }
@@ -241,6 +250,7 @@ class Data {
         console.error(`failed to save ${this.name} correctly: `, err);
         return Promise.reject(this)
       }
+console.log(`going to try writing to ${Data.sink.url(this.#cid)} with bytes: `, bytes);
     return request(
       // calling sink.url() with a cid returns a block/put url
         Data.sink.url(this.#cid),
@@ -256,6 +266,7 @@ console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
         const pinReqs = [request(Data.sink.url(writeResponse.Key), {method: 'POST'})];
+console.log(``)
         if(lastAddress) await request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'})
           .then(response => {
             pinReqs.push(request(Data.sink.url(lastAddress).replace('add', 'rm'), {method: 'POST'}));
@@ -263,11 +274,14 @@ console.log(`wrote ${this.name} at ${writeResponse.Key}`);
           .catch(err => {
             console.log(`${lastAddress} was not pinned. `, err);
           })
-        console.log(`pinning with: `, pinReqs);
+console.log(`pinning with: `, pinReqs);
         return Promise.all(pinReqs)
       })
       .then(([addResponse, rmResponse]) => {
         const added = JSON.parse(addResponse);
+console.log(`pins added: `, added);
+if(!!rmResponse)
+  console.log(`pins removed: `, JSON.parse(rmResponse));
         if(!added.Pins.includes(this.#cid.toString()))
           throw new Error(`was not able to pin ${this.#cid.toString()} pinResponse: `, added)
       })
@@ -276,7 +290,7 @@ console.log(`wrote ${this.name} at ${writeResponse.Key}`);
 
   // write ciphertext if keys are provided
   // calls can be edited to omit name parameter (because I split off persist())
-  async write(name='', keys=null, cache=true){
+/*  async write(name='', keys=null, cache=true){
     await this.#ready;
     let block = this.#block;
     if(keys){
@@ -290,7 +304,7 @@ console.log(`wrote ${this.name} at ${writeResponse.Key}`);
 
     this.#ephemeral = true;
     return this
-  }
+  }*/
 }
 
 export {Data, request};
