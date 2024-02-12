@@ -40,7 +40,7 @@ function mfdTextSegment(text){
 }
 
 // 
-export function mfdOpts(fileIshes){
+export function mfdOpts(fileIshes, options=null){
   // filishes must be itterable
   const segments = [];
   const boundary = `-----------------XYZ${Date.now()}ABC`;
@@ -56,13 +56,10 @@ export function mfdOpts(fileIshes){
   }
   segments.push(mfdTextSegment(`--${boundary}--`));
   
-  const options = { 
-    method: 'POST',
-    headers: {
-      'Content-Type': `multipart/form-data; boundary=${boundary}`,
-    },
-    body: abConcat(segments)
-  };
+  if(options === null)
+    options = { method: 'POST', headers: {}};
+  options.headers['Content-Type'] = `multipart/form-data; boundary=${boundary}`;
+  options['body'] = abConcat(segments);
   return options
 }
 

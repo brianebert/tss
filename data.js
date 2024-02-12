@@ -54,9 +54,9 @@ class Data {
 
   // access away
 
-//  get block(){
-  //  return this.#block
-  //}
+  get block(){
+    return this.#block
+  }
 
   get cid(){ 
     return this.#cid
@@ -211,7 +211,7 @@ class Data {
       .then(response => JSON.parse(response))
       .then(pin => {
         console.log(`rm(${cid.toString()}) found pin: `, pin);
-        return request(this.sink.url(cid.toString()).replace('add', 'rm'), {method: 'POST'})
+        return request(this.sink.url(cid.toString()).replace('add', 'rm'), {method: 'POST'}) //*****
       })
       .then(response => JSON.parse(response))
       .then(unPin => console.log(`unpinned: `, unPin))
@@ -265,9 +265,12 @@ console.log(`going to try writing to ${Data.sink.url(this.#cid)} with bytes: `, 
 console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
+      })
+/* block commented while waiting to clear up Infura pinning
         const pinReqs = [request(Data.sink.url(writeResponse.Key), {method: 'POST'})];
 console.log(``)
         if(lastAddress) await request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'})
+   
           .then(response => {
             pinReqs.push(request(Data.sink.url(lastAddress).replace('add', 'rm'), {method: 'POST'}));
           })
@@ -284,27 +287,10 @@ if(!!rmResponse)
   console.log(`pins removed: `, JSON.parse(rmResponse));
         if(!added.Pins.includes(this.#cid.toString()))
           throw new Error(`was not able to pin ${this.#cid.toString()} pinResponse: `, added)
-      })
+      })*/
       .catch(error => console.error(`error persisting ${this.name}: `, error))
+      .finally(() => this)
   }
-
-  // write ciphertext if keys are provided
-  // calls can be edited to omit name parameter (because I split off persist())
-/*  async write(name='', keys=null, cache=true){
-    await this.#ready;
-    let block = this.#block;
-    if(keys){
-      const cipherText = await Data.lock(block.bytes, keys);
-      block = await Block.encode({value: cipherText, codec: raw, hasher});
-      this.#encryptedBytes = block.bytes;
-    }
-    this.#cid = block.cid;
-    if(cache)
-      Data.cache.add(this);
-
-    this.#ephemeral = true;
-    return this
-  }*/
 }
 
 export {Data, request};
