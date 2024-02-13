@@ -265,6 +265,7 @@ console.log(`going to try writing to ${Data.sink.url(this.#cid)} with bytes: `, 
 console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
+        return this
       })
 /* block commented while waiting to clear up Infura pinning
         const pinReqs = [request(Data.sink.url(writeResponse.Key), {method: 'POST'})];
@@ -289,7 +290,6 @@ if(!!rmResponse)
           throw new Error(`was not able to pin ${this.#cid.toString()} pinResponse: `, added)
       })*/
       .catch(error => console.error(`error persisting ${this.name}: `, error))
-      .finally(() => this)
   }
 }
 

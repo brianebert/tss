@@ -121,34 +121,6 @@ console.log(`entered instance.copy with `, this, inKeys, outKeys);
         await Encrypted_Node.traverse(this.cid, writeNode, inKeys);
     else
       writeNode(this);
-
-    /*if(needsReLinking){
-      let count = 10;
-      const linkMap = Object.fromEntries(graphNodes.filter(node => Object.keys(node.links).length === 1)
-        .map(async node => {
-          const ptNode = await new Encrypted_Node(node.block, node.signingAccount);
-          return [node.cid.toString(), ptNode];
-        }));
-      while(count && graphNodes.length > 0){
-        console.log(`re-linking with graphNodes and linkMap: `, graphNodes, linkMap);
-        graphNodes.filter(node => {
-            const canLink = Object.values(node.links).filter(value => Object.keys(linkMap).includes(value.toString()));
-            return canLink.length === Object.keys(node.links).length
-          }) //  Object.keys(node.links).length === 0
-          .map(async node => {
-            values = Object.assign({}, node.value);
-            for([key, value] of Object.entries(node.links))
-              values[key] = linkMap[value.toString()].cid;
-            linkMap[node.cid.toString()] = await new Encrypted_Node(values, node.signingAccount).write('', outKeys, false, false);
-            graphNodes = graphNodes.filter(el => el.cid.toString() !== node.cid.toString())
-          })
-        count--;
-      }
-      console.log(`finished re-linking with graphNodes and linkMap: `, graphNodes, linkMap);
-    }*/
-    // clean cache and localStorage here
-    //for(const member of this.cache.filter(member => !graphNodes.includes(member.cid.toString())))
-      //console.log(`cache member ${member.cid.toString()} not part of graph`); 
   }
 }
 
