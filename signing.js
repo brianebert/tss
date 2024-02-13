@@ -1,4 +1,5 @@
-import {default as wallet} from "@stellar/freighter-api";
+//import {default as wallet} from "@stellar/freighter-api";
+import freighterApi from "@stellar/freighter-api";
 import {Keypair, StrKey} from "stellar-base";
 import {AccountWatcher, AccountDigger} from './apiReaders.js';
 import {COL_Node, request} from './cols.js';
@@ -8,7 +9,7 @@ import * as Sodium from './na.js';
 
 // Stellar api server
 const HORIZON = 'https://horizon.stellar.org';
-
+const wallet = freighterApi;
 
 // repository for keys derived to automate encryption, decryption and block chain use
 export class SigningAccount extends StellarAccount {
@@ -26,6 +27,7 @@ export class SigningAccount extends StellarAccount {
     this.#ready = new Promise(resolve => {
       return this.deriveKeys(secret, constants)
          .then(() => {
+           console.log(`derived signing keys and setting #canSign true`);
            this.#canSign = true;
            resolve(true)
          })
@@ -106,13 +108,15 @@ export class SigningAccount extends StellarAccount {
 
   // creates SigningAccount from wallet imported
   static async checkForWallet(accountId=null, secret=null){
-    console.log(`working with wallet: `, wallet);
+    console.log(`working with wallet api: `, wallet);
     console.log(`in a browser: `, wallet.isBrowser);
+    console.log(`isConnected: `, await wallet.isConnected());
     if(accountId)
-      return Promise.resolve(this(accountId, secret))
-    if(wallet?.isBrowser && await wallet.isConnected())
+      return Promise.resolve(new this(accountId, secret))
+    if(wallet.isBrowser && await wallet.isConnected())
       return wallet.getPublicKey().then(address => new this(address))
-    return Promise.resolve(null)
+    const kp = Keypair.random();
+    return Promise.resolve(new this(kp.publicKey()))
   }
 
   static async canSign(account){
@@ -125,6 +129,7 @@ export class SigningAccount extends StellarAccount {
 
   // uses a signature as randomness input.
   async deriveKeys(secret=null, constants){
+console.log(`deriving keys with secret: ${secret}`);
     if(secret){
       var kp = Keypair.fromSecret(secret);
       if(kp.publicKey() !== this.account.id)
@@ -169,7 +174,7 @@ export class SigningAccount extends StellarAccount {
     }
 
     // if secret is falsy, use signature from wallet to derive keys
-    if(await wallet.getPublicKey() === this.account.id)
+    if(await wallet.isConnected() && await wallet.getPublicKey() === this.account.id)
       return wallet.signTransaction(myPhrase.toXDR()).then(theThen.bind(this))
     else
       throw new Error(`Freighter account does not match Signing Account`)
