@@ -119,6 +119,7 @@ export class SigningAccount extends StellarAccount {
     return Promise.resolve(new this(kp.publicKey()))
   }
 
+// try to get rid of this
   static async canSign(account){
     if(!!account.ed25519)
       return Promise.resolve(true)
