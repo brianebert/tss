@@ -220,7 +220,7 @@ class Data {
       )
   }
 
-  async write(name='', keys=null, cache=true, deleteLast=true){
+  async write(name='', keys=null, cache=true, deleteLast=false){
     await this.#ready;
     if(keys){
       const cipherText = await Data.lock(this.#block.bytes, keys);
