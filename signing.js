@@ -13,11 +13,11 @@ const wallet = freighterApi;
 
 // repository for keys derived to automate encryption, decryption and block chain use
 export class SigningAccount extends StellarAccount {
-  #canSign;
+  #canSign; // true when have presented secret key associated with account.id or have signed with wallet
   #ec25519; // hex string for asymetric encryption
   #ed25519; // a Stellar Keypair for automated signing
   #shareKX; // hex string key pair for key shared key exchange
-  #ready;
+  #ready;   // resolves after setting #canSign appropriately
   constructor(address, secret=null, constants={asymetric: 'Asymetric', signing: 'Signing', shareKX: 'ShareKX'}){
     if(!StrKey.isValidEd25519PublicKey(address))
       throw new Error(`SigningAccount requires valid Ed25519 Public Key as arguement.`)
@@ -120,13 +120,13 @@ export class SigningAccount extends StellarAccount {
   }
 
 // try to get rid of this
-  static async canSign(account){
+/*  static async canSign(account){
     if(!!account.ed25519)
       return Promise.resolve(true)
     if(await wallet.isConnected())
       return account.deriveKeys()
     return Promise.resolve(false)
-  }
+  }*/
 
   // uses a signature as randomness input.
   async deriveKeys(secret=null, constants){
@@ -165,12 +165,13 @@ console.log(`deriving keys with secret: ${secret}`);
     if(secret){
       myPhrase.sign(kp);
       return Promise.resolve(myPhrase.toXDR())
-        .then(theThen.bind(this)).then((keys) => {
+        .then(theThen.bind(this)).then(() => {
           // secret is known, overwrite derived signing pair
           this.#ed25519 = {
             sk: kp.rawSecretKey(),
             pk: kp.rawPublicKey()
           };
+          return this
         })
     }
 

@@ -20,14 +20,6 @@ class Encrypted_Node extends COL_Node {
     return this.#dataRootLabel = typeof label === 'string' ? label : ''
   }
 
-  static bP;
-  static get blockParameters(){
-    return this.bP
-  }
-  static set blockParameters(bP){
-    this.bP = bP;
-  }
-
   static SigningAccount = SigningAccount;
 
   static async fromCID(account, cid, keys=null){
@@ -58,7 +50,7 @@ class Encrypted_Node extends COL_Node {
     const {signingAccount, address, inKeys, outKeys, traverse, dataRootLabel} = opts;
     const root = await this.fromCID(signingAccount, address, inKeys);
     const copyRoot = await root.copy(inKeys, outKeys, traverse);
-    console.log(`have copied from root: `, copyRoot);
+    console.log(`have copied, starting from root: `, copyRoot);
     if(dataRootLabel.length){
       signingAccount.setDataEntry(dataRootLabel, copyRoot.cid.toString());
     }
@@ -71,7 +63,7 @@ console.log(`entered instance.copy with `, this, inKeys, outKeys);
     const needsReLinking = !!inKeys !== !!outKeys || !!inKeys && !!outKeys && 
                            JSON.stringify(inKeys.reader) !== JSON.stringify(outKeys.writer);
     async function writeNode(node){
-      await node.write('', null, false, false);
+      await node.write('', outKeys, false, false);
       graphNodes.push(node);
     }
     const linkMap = {};

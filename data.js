@@ -36,7 +36,7 @@ class Datums extends SetOf {
 // wraps a multiformats block in accessors, caching, and methods for writing and reading
 // to and from ipfs with asymetric and shared key libsodium encryption
 class Data {
-  #block; #cid; #encryptedBytes; #ephemeral; #rawBytes; #ready; #size;
+  #block; #cid; #ephemeral; #rawBytes; #ready; #size;
   constructor(data, codec=cbor){
     this.codec = codec;
     if(data instanceof Block.Block){
@@ -166,7 +166,7 @@ class Data {
     cid = CID.asCID(cid) ? cid : CID.parse(cid);
     const cached = this.cache.fetch({cid: cid});
     if(cached){
-      //console.log(`read ${cached.cid.toString()} from cache`);
+      console.log(`read ${cached.cid.toString()} from cache`);
       return Promise.resolve(cached)      
     }
 
@@ -228,19 +228,22 @@ class Data {
       this.#rawBytes = block.bytes;
       this.#cid = block.cid;
     }
-    if(cache)
-      Data.cache.add(this);
 
-    const bytes = this.#cid.toString() === this.#block.cid.toString() ? this.#block.bytes : this.#rawBytes
+    const bytes = !keys && this.#cid.toString() === this.#block.cid.toString() ? this.#block.bytes : this.#rawBytes
 
     this.#size = bytes.byteLength;
 
+    if(cache)
+      Data.cache.add(this);
+    
     const lastAddress = Object.hasOwn(this.links, `${this.name}_last`) ? this.links[`${this.name}_last`].toString() : false;
+
 
     if(!Data.sink.url)
       try{
         localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes));
         console.log(`added ${this.name}, ${this.#cid.toString()} to localStorage`);
+        this.#ephemeral = false;
         if(deleteLast && Object.hasOwn(localStorage, lastAddress)){
           localStorage.removeItem(lastAddress);
           console.log(`removed last address of ${this.name}, ${lastAddress}, from localStorage`);
@@ -265,6 +268,7 @@ console.log(`going to try writing to ${Data.sink.url(this.#cid)} with bytes: `, 
 console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
+        this.#ephemeral = false;
         return this
       })
 /* block commented while waiting to clear up Infura pinning
