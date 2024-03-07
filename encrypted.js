@@ -63,7 +63,8 @@ console.log(`entered instance.copy with `, this, inKeys, outKeys);
     const needsReLinking = !!inKeys !== !!outKeys || !!inKeys && !!outKeys && 
                            JSON.stringify(inKeys.reader) !== JSON.stringify(outKeys.writer);
     async function writeNode(node){
-      await node.write('', outKeys, false, false);
+      const keys = needsReLinking ? outKeys : null;
+      await node.write('', keys, false, false);
       graphNodes.push(node);
     }
     const linkMap = {};

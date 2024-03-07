@@ -235,7 +235,7 @@ class Data {
 
     if(cache)
       Data.cache.add(this);
-    
+
     const lastAddress = Object.hasOwn(this.links, `${this.name}_last`) ? this.links[`${this.name}_last`].toString() : false;
 
 
@@ -268,31 +268,21 @@ console.log(`going to try writing to ${Data.sink.url(this.#cid)} with bytes: `, 
 console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
+        return request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'})
+          .then(response => {
+            request(`${Data.sink.url(lastAddress).replace('add', 'update')}&arg=${writeResponse.Key}`, {method: 'POST'})
+          })
+          .catch(err => {
+            console.log(`lastAddress ${lastAddress} was not pinned. `, err);
+            return request(Data.sink.url(writeResponse.Key), {method: 'POST'})
+          })
+      })
+      .then(response => {
+        const pinResponse = JSON.parse(response);
+console.log(`pin response is `, pinResponse);
         this.#ephemeral = false;
         return this
       })
-/* block commented while waiting to clear up Infura pinning
-        const pinReqs = [request(Data.sink.url(writeResponse.Key), {method: 'POST'})];
-console.log(``)
-        if(lastAddress) await request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'})
-   
-          .then(response => {
-            pinReqs.push(request(Data.sink.url(lastAddress).replace('add', 'rm'), {method: 'POST'}));
-          })
-          .catch(err => {
-            console.log(`${lastAddress} was not pinned. `, err);
-          })
-console.log(`pinning with: `, pinReqs);
-        return Promise.all(pinReqs)
-      })
-      .then(([addResponse, rmResponse]) => {
-        const added = JSON.parse(addResponse);
-console.log(`pins added: `, added);
-if(!!rmResponse)
-  console.log(`pins removed: `, JSON.parse(rmResponse));
-        if(!added.Pins.includes(this.#cid.toString()))
-          throw new Error(`was not able to pin ${this.#cid.toString()} pinResponse: `, added)
-      })*/
       .catch(error => console.error(`error persisting ${this.name}: `, error))
   }
 }
