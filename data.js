@@ -166,7 +166,7 @@ class Data {
     cid = CID.asCID(cid) ? cid : CID.parse(cid);
     const cached = this.cache.fetch({cid: cid});
     if(cached){
-      console.log(`read ${cached.cid.toString()} from cache`);
+//console.log(`read ${cached.cid.toString()} from cache`);
       return Promise.resolve(cached)      
     }
 
@@ -269,15 +269,16 @@ console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
         return request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'})
-          .then(response => {
+          .then(response => 
             request(`${Data.sink.url(lastAddress).replace('add', 'update')}&arg=${writeResponse.Key}`, {method: 'POST'})
-          })
+          )
           .catch(err => {
             console.log(`lastAddress ${lastAddress} was not pinned. `, err);
             return request(Data.sink.url(writeResponse.Key), {method: 'POST'})
           })
       })
       .then(response => {
+console.log(`lets have a look at the pinning response: `, response);
         const pinResponse = JSON.parse(response);
 console.log(`pin response is `, pinResponse);
         this.#ephemeral = false;
