@@ -253,7 +253,7 @@ class Data {
         console.error(`failed to save ${this.name} correctly: `, err);
         return Promise.reject(this)
       }
-console.log(`going to try writing to ${Data.sink.url(this.#cid)} with bytes: `, bytes);
+//console.log(`going to try writing to ${Data.sink.url(this.#cid)} with bytes: `, bytes);
     return request(
       // calling sink.url() with a cid returns a block/put url
         Data.sink.url(this.#cid),
@@ -268,14 +268,14 @@ console.log(`going to try writing to ${Data.sink.url(this.#cid)} with bytes: `, 
 console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
-        return request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'})
-          .then(response => 
-            request(`${Data.sink.url(lastAddress).replace('add', 'update')}&arg=${writeResponse.Key}`, {method: 'POST'})
-          )
-          .catch(err => {
-            console.log(`lastAddress ${lastAddress} was not pinned. `, err);
-            return request(Data.sink.url(writeResponse.Key), {method: 'POST'})
-          })
+        try {
+          await request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'})
+        } catch {
+console.log(`did not find a pin for ${this.name}_last at ${lastAddress}, so calling /pin/add${writeResponse.Key}`);
+          return request(Data.sink.url(writeResponse.Key), {method: 'POST'}) 
+        }
+console.log(`found a pin for ${lastAddress}, so calling /pin/update${writeResponse.Key}`);
+        return request(`${Data.sink.url(lastAddress).replace('add', 'update')}&arg=${writeResponse.Key}`, {method: 'POST'})
       })
       .then(response => {
 console.log(`lets have a look at the pinning response: `, response);
