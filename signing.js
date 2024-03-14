@@ -95,22 +95,20 @@ export class SigningAccount extends StellarAccount {
       // returns {rx: libsodium.crypto_kx_server_session_keys(keys.pk, keys.sk, pk).sharedRx,
       //          tx: libsodium.crypto_kx_client_session_keys(keys.pk, keys.sk, pk).sharedTx}
       // select rx or tx appropriately whether writing to or reading from someone else
-      sharedWith: async (accountId, pubLickeyLabel) => {
+      sharedWith: (accountId, pubLickeyLabel) => {
         if(!this.#shareKX)
           return Promise.resolve(null)
         if(StrKey.isValidEd25519PublicKey(accountId))
           return SigningAccount.load(accountId)
             .then(account => Buffer.from(account.data[pubLickeyLabel], 'base64'))
             .then(pk => Sodium.sharedKeys(this.#shareKX, pk))
+        return Promise.resolve(null)
       }
     }
   }
 
   // creates SigningAccount from wallet imported
   static async checkForWallet(accountId=null, secret=null){
-    console.log(`working with wallet api: `, wallet);
-    console.log(`in a browser: `, wallet.isBrowser);
-    console.log(`isConnected: `, await wallet.isConnected());
     if(accountId)
       return Promise.resolve(new this(accountId, secret))
     if(wallet.isBrowser && await wallet.isConnected())
@@ -118,15 +116,6 @@ export class SigningAccount extends StellarAccount {
     const kp = Keypair.random();
     return Promise.resolve(new this(kp.publicKey()))
   }
-
-// try to get rid of this
-/*  static async canSign(account){
-    if(!!account.ed25519)
-      return Promise.resolve(true)
-    if(await wallet.isConnected())
-      return account.deriveKeys()
-    return Promise.resolve(false)
-  }*/
 
   // uses a signature as randomness input.
   async deriveKeys(secret=null, constants){

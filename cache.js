@@ -27,11 +27,12 @@ export class SetOf {
 
   // return cqche hits
   fetch(id){
-    const index = this.#members.findIndex(member => this.#equals(id, member));
-    if(index === -1)
-      return null
-    if(this.#readFrom)
+    if(this.#readFrom){
+      const index = this.#members.findIndex(member => this.#equals(id, member));
+      if(index === -1)
+        return null
       return this.#members[index] // CHANGE THIS TO .at() and implement in Members above
+    }
     return null  
   }
 

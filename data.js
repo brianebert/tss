@@ -242,7 +242,7 @@ class Data {
     if(!Data.sink.url)
       try{
         localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes));
-        console.log(`added ${this.name}, ${this.#cid.toString()} to localStorage`);
+//console.log(`added ${this.name}, ${this.#cid.toString()} to localStorage`);
         this.#ephemeral = false;
         if(deleteLast && Object.hasOwn(localStorage, lastAddress)){
           localStorage.removeItem(lastAddress);

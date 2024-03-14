@@ -71,8 +71,7 @@ class IPFS_COL_Node extends Data {
         if(!haveTraversed.has(cid.toString())){
           haveTraversed.add(cid.toString());
           for(const link of Object.keys(instance.links))
-            if(!link.endsWith('_last')){
-console.log(`traversing link ${link}: `, instance.links[link]);          
+            if(!link.endsWith('_last')){       
               const subGraph = await recurse(instance.links[link], fn, keys, depth + 1);
               instance.value[link] = subGraph.cid;
               if(!subGraph.parents.map(parent => parent.cid.toString()).includes(instance.cid.toString()))

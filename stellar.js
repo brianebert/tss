@@ -155,6 +155,7 @@ export class StellarAccount {
     if(!pk && this?.ed25519)
       pk = this.ed25519.pk;
     const account = await this.reload();
+console.log(`in addSigner. pk is `, pk);
     const pkStr = StrKey.encodeEd25519PublicKey(pk);
     for(let signer of this.account.signers)
       if(signer.key === pkStr)

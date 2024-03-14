@@ -92,6 +92,4 @@ console.log(`entered instance.copy with `, this, inKeys, outKeys);
   }
 }
 
-window.Encrypted_Node = Encrypted_Node;
-
 export {Encrypted_Node};

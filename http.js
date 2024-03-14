@@ -12,6 +12,14 @@ else {
       .then(([bufMod, httpMod]) => [bufMod.Blob, bufMod.Buffer, httpMod]);
   await import('eventsource').then((EventSource) => global.EventSource = EventSource.default);
   await import('ws').then(WS => global.WebSocket = WS.default);
+  global.localStorage = {
+    setItem: function(key, value){
+      this[key] = value
+    },
+    getItem: function(key){return this[key]},
+    removeItem: function(key){delete this.key}
+  };
+  console.warn(`using VOLATILE node global.localStorage: `, global.localStorage);
 }
 
 // concattenate lines of multifunction form data request body
