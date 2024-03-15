@@ -18,7 +18,7 @@ export class ApiReader {
   // pages through api from cursor
   nextRecords(cursor=null){
     this.#recursionDepth++;
-    return request(cursor ? `${this.url}&cursor=${cursor}` : this.url)
+    return request(cursor === null ? this.url : `${this.url}&cursor=${cursor}`)
       .then(response => {
         let records = JSON.parse(response)._embedded.records;
         if(records.length){

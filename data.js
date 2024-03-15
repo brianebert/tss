@@ -93,6 +93,7 @@ class Data {
   }
 
   set ephemeral(state){
+console.log(`setting this.#ephemeral to ${state}`);
     return this.#ephemeral = state
   }
 
@@ -222,6 +223,7 @@ class Data {
 
   async write(name='', keys=null, cache=true, deleteLast=false){
     await this.#ready;
+//console.log(`writing ${this.name} with keys ${!!keys}`);
     if(keys){
       const cipherText = await Data.lock(this.#block.bytes, keys);
       const block = await Block.encode({value: cipherText, codec: raw, hasher});
@@ -265,7 +267,7 @@ class Data {
       )
       .then(async response => {
         const writeResponse = JSON.parse(response);
-        console.log(`wrote ${this.name} at ${writeResponse.Key}`);
+console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
         try {
@@ -283,8 +285,8 @@ class Data {
       .then(response => {
 //console.log(`lets have a look at the pinning response: `, response);
         const pinResponse = JSON.parse(response);
-//console.log(`pin response is `, pinResponse);
         this.#ephemeral = false;
+//console.log(`this.#ephemeral is ${this.#ephemeral} and pin response is `, pinResponse);
         return this
       })
       .catch(error => console.error(`error persisting ${this.name}: `, error))

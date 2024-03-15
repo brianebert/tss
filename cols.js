@@ -103,11 +103,12 @@ class IPFS_COL_Node extends Data {
     value[linkName] = node.cid;
     this.value = value;
     node.parents.push(this);
-    value = Object.assign({}, node.value);
-    value['inserted_at'] = new Date().toUTCString();
-    node.value = value;
-    return node.write(node?.name?node.name:'', keys)
-               .then(() => IPFS_COL_Node.bubbleBubble(node, keys)) 
+    //value = Object.assign({}, node.value);
+    //value['inserted_at'] = new Date().toUTCString();
+    //node.value = value;
+//console.log(`writing ${node.name} with this.ephemeral = ${this.ephemeral}`)
+    return this.write(node?.name ? node.name : '', keys)
+               .then(() => IPFS_COL_Node.bubbleBubble(this, keys)) 
   }
 
   // change value of self
