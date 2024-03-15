@@ -265,22 +265,25 @@ class Data {
       )
       .then(async response => {
         const writeResponse = JSON.parse(response);
-console.log(`wrote ${this.name} at ${writeResponse.Key}`);
+        console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
         try {
-          await request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'})
+          const pinLsResponse = JSON.parse(await request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'}));
+//console.log(`/pin/ls?arg=${lastAddress} response is `, pinLsResponse);
+          if(Object.hasOwn(pinLsResponse, 'Type') && pinLsResponse.Type === 'error')
+            throw new Error(`No pin found for ${lastAddress}`)
         } catch {
-console.log(`did not find a pin for ${this.name}_last at ${lastAddress}, so calling /pin/add${writeResponse.Key}`);
+//console.log(`did not find a pin for ${this.name}_last at ${lastAddress}, so returning call to /pin/add?arg=${writeResponse.Key}`);
           return request(Data.sink.url(writeResponse.Key), {method: 'POST'}) 
         }
-console.log(`found a pin for ${lastAddress}, so calling /pin/update${writeResponse.Key}`);
+//console.log(`found a pin for ${lastAddress}, so calling /pin/update${writeResponse.Key}`);
         return request(`${Data.sink.url(lastAddress).replace('add', 'update')}&arg=${writeResponse.Key}`, {method: 'POST'})
       })
       .then(response => {
-console.log(`lets have a look at the pinning response: `, response);
+//console.log(`lets have a look at the pinning response: `, response);
         const pinResponse = JSON.parse(response);
-console.log(`pin response is `, pinResponse);
+//console.log(`pin response is `, pinResponse);
         this.#ephemeral = false;
         return this
       })
