@@ -27,6 +27,26 @@ class IPFS_COL_Node extends Data {
     return this?.value.colName
   }
 
+  static bubble(node, keys){
+    return Promise.all(node.parents.map(parent => {
+      const value = Object.assign({}, parent.value);
+      if(node.name in parent.links && !node?.cid)
+        delete value[node.name];
+      else
+        value[node.name] = node.cid;
+      value['modified_at'] = new Date().toUTCString();
+      value[`${parent.name}_last`] = parent.cid;
+      parent.value = value;
+      return parent.write(parent.name, keys);
+    }))
+    .then(parents => {
+      const deDuped = Array.from(new Set(parents));
+      if(deDuped.length === 1 && deDuped[0].parents.length === 0)
+        return deDuped.pop()
+      return deDuped.map(parent => this.bubble(parent, keys))
+    })
+  }
+
   /* toil and trouble
    * args: a new IPFS_COL_Node
    * returns: top level IPFS_COL_Node
