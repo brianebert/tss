@@ -11,6 +11,7 @@ import {SetOf} from './cache.js';
 import {mfdOpts, request} from './http.js';
 import * as sodium from './na.js';
 
+const DEBUG = true;
 
 class IPFS_Provider {
   #url;
@@ -202,7 +203,7 @@ console.log(`setting this.#ephemeral to ${state}`);
     if(cached)
       this.cache.remove({cid: cid});
     if(!this.sink.url){
-      console.log(`removing ${cid.toString()} from localStorage`);
+      if(DEBUG) console.log(`removing ${cid.toString()} from localStorage`);
       return Promise.resolve(localStorage.removeItem(cid.toString()))
     }
     // calling sink.url() with string returns pin/add url
@@ -211,11 +212,11 @@ console.log(`setting this.#ephemeral to ${state}`);
       )
       .then(response => JSON.parse(response))
       .then(pin => {
-        console.log(`rm(${cid.toString()}) found pin: `, pin);
+        if(DEBUG) console.log(`rm(${cid.toString()}) found pin: `, pin);
         return request(this.sink.url(cid.toString()).replace('add', 'rm'), {method: 'POST'}) //*****
       })
       .then(response => JSON.parse(response))
-      .then(unPin => console.log(`unpinned: `, unPin))
+      .then(unPin => console.log(`Data.rm(${cid.toString()}) unpinned: `, unPin))
       .catch(err => 
         console.error(`error unpinning ${cid.toString()}:`, err)
       )
@@ -244,11 +245,11 @@ console.log(`setting this.#ephemeral to ${state}`);
     if(!Data.sink.url)
       try{
         localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes));
-//console.log(`added ${this.name}, ${this.#cid.toString()} to localStorage`);
+        if(DEBUG) console.log(`added ${this.name}, ${this.#cid.toString()} to localStorage`);
         this.#ephemeral = false;
         if(deleteLast && Object.hasOwn(localStorage, lastAddress)){
           localStorage.removeItem(lastAddress);
-          console.log(`removed last address of ${this.name}, ${lastAddress}, from localStorage`);
+          if(DEBUG) console.log(`removed last address of ${this.name}, ${lastAddress}, from localStorage`);
         }
         return Promise.resolve(this)
       } catch (err) {
@@ -267,7 +268,7 @@ console.log(`setting this.#ephemeral to ${state}`);
       )
       .then(async response => {
         const writeResponse = JSON.parse(response);
-console.log(`wrote ${this.name} at ${writeResponse.Key}`);
+        if(DEBUG) console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
         try {

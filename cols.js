@@ -41,9 +41,9 @@ class IPFS_COL_Node extends Data {
     }))
     .then(parents => {
       const deDuped = Array.from(new Set(parents));
-      if(deDuped.length === 1 && deDuped[0].parents.length === 0)
-        return deDuped.pop()
-      return deDuped.map(parent => this.bubble(parent, keys))
+      if(deDuped.length > 1 || deDuped[0].parents.length > 0)
+        return deDuped.map(parent => this.bubble(parent, keys))
+      return deDuped.pop()
     })
   }
 
@@ -81,6 +81,40 @@ class IPFS_COL_Node extends Data {
     )
   }
 
+  static fizz(nodes, keys){
+    if(nodes.length === 1 && nodes[0].parents.length === 0)
+      return Promise.resolve(nodes[0])
+    const deDuped = new Set();
+    // first collect all the parents of this generation
+    for(let i=0; i < nodes.length; i++)
+      for(let j=0; j < nodes[i].parents.length; j++)
+        deDuped.add(nodes[i].parents[j]);
+    const parentValues = Array.from(deDuped)
+                              .map(parent => new Object({
+                                id: parent.cid.toString(),
+                                name: parent.name, 
+                                value: Object.assign({}, parent.value)
+                              })
+                            );
+//parentValues.map(parent => console.log(`${parent.id}´s values are: `, parent.value));
+    // and update their link values
+    for(let i=0; i < nodes.length; i++)
+      for(let j=0; j < parentValues.length; j++){
+        if(Object.keys(parentValues[j].value).includes(nodes[i].name && !nodes[i].cid))
+          delete parentValues[j].value[nodes[i].name];
+        else
+          parentValues[j].value[nodes[i].name] = nodes[i].cid;
+        parentValues[j].value['modified_at'] = new Date().toUTCString();
+        parentValues[j].value[`${parentValues[j].name}_last`] = CID.parse(parentValues[j].id);
+      }
+    deDuped.forEach(parent => {
+      parent.value = parentValues.filter(value => value.id === parent.cid.toString()).pop().value;
+    });
+    // they aren't encrypted until written
+    return Promise.all(Array.from(deDuped).map(parent => parent.write(parent.name, keys)))
+      .then(fizzed => this.fizz(fizzed, keys))
+  }
+
   // traverse blocks in depth first order, calling fn(instance, depth)
   // on each once and adding parent link to each subgraph traversed
   static async traverse(cid, fn=()=>{}, keys=null){
@@ -112,7 +146,7 @@ class IPFS_COL_Node extends Data {
     console.log(`deleting ${this.name}`)
     Data.rm(this.cid);
     this.cid = undefined;
-    return IPFS_COL_Node.bubbleBubble(this, keys)
+    return IPFS_COL_Node.fizz([this], keys)
   }
 
   // make node a child of self
@@ -123,12 +157,13 @@ class IPFS_COL_Node extends Data {
     value[linkName] = node.cid;
     this.value = value;
     node.parents.push(this);
-    //value = Object.assign({}, node.value);
-    //value['inserted_at'] = new Date().toUTCString();
-    //node.value = value;
-//console.log(`writing ${node.name} with this.ephemeral = ${this.ephemeral}`)
     return this.write(node?.name ? node.name : '', keys)
-               .then(() => IPFS_COL_Node.bubbleBubble(this, keys)) 
+               .then(() => {
+//console.log(`insert() is going to fizz() ${this.name}: `);
+//console.log(`and ${this.name}'s parents are: `, this?.parents);
+//console.log(`The type of this.insert() is ${typeof this?.insert}`);
+                return IPFS_COL_Node.fizz([this], keys)
+               }) 
   }
 
   // change value of self
@@ -150,7 +185,7 @@ class IPFS_COL_Node extends Data {
     value[`${this.name}_last`] = this.cid;
     this.value = value;
     return this.write(this.name, keys)
-               .then(writeResult => IPFS_COL_Node.bubbleBubble(this, keys))
+               .then(writeResult => IPFS_COL_Node.fizz([this], keys))
   }
 }
 
