@@ -27,60 +27,6 @@ class IPFS_COL_Node extends Data {
     return this?.value.colName
   }
 
-  static bubble(node, keys){
-    return Promise.all(node.parents.map(parent => {
-      const value = Object.assign({}, parent.value);
-      if(node.name in parent.links && !node?.cid)
-        delete value[node.name];
-      else
-        value[node.name] = node.cid;
-      value['modified_at'] = new Date().toUTCString();
-      value[`${parent.name}_last`] = parent.cid;
-      parent.value = value;
-      return parent.write(parent.name, keys);
-    }))
-    .then(parents => {
-      const deDuped = Array.from(new Set(parents));
-      if(deDuped.length > 1 || deDuped[0].parents.length > 0)
-        return deDuped.map(parent => this.bubble(parent, keys))
-      return deDuped.pop()
-    })
-  }
-
-  /* toil and trouble
-   * args: a new IPFS_COL_Node
-   * returns: top level IPFS_COL_Node
-   */
-  static async bubbleBubble(node, keys){
-    async function bubble(node, parent, keys){
-      /* if node.name not in parent's links, put it there
-       * if node.name in parent's links and the hashes are equal, delete node and references to it
-       * if node.name in parent's links with a different hash, update the hash
-       *
-       * then update my_previous_value link on parent and
-       * if node.parent.parent exists, recurse upward
-       *
-       */
-      const value = Object.assign({}, parent.value);
-      if(node.name in parent.links && !node?.cid)
-        delete value[node.name];
-      else
-        value[node.name] = node.cid;
-      value['modified_at'] = new Date().toUTCString();
-      value[`${parent.name}_last`] = parent.cid;
-      parent.value = value;
-      await parent.write(parent.name, keys);
-      return this.bubbleBubble(parent, keys)
-    }
-
-    return await node.parents.reduce((curr, next) => 
-      curr.then(() => 
-        bubble.call(this, node, next, keys)
-      ), 
-      Promise.resolve(node)
-    )
-  }
-
   static fizz(nodes, keys){
     if(nodes.length === 1 && nodes[0].parents.length === 0)
       return Promise.resolve(nodes[0])
@@ -100,12 +46,12 @@ class IPFS_COL_Node extends Data {
     // and update their link values
     for(let i=0; i < nodes.length; i++)
       for(let j=0; j < parentValues.length; j++){
+        parentValues[j].value[`${parentValues[j].name}_last`] = CID.parse(parentValues[j].id);
         if(Object.keys(parentValues[j].value).includes(nodes[i].name && !nodes[i].cid))
           delete parentValues[j].value[nodes[i].name];
         else
           parentValues[j].value[nodes[i].name] = nodes[i].cid;
         parentValues[j].value['modified_at'] = new Date().toUTCString();
-        parentValues[j].value[`${parentValues[j].name}_last`] = CID.parse(parentValues[j].id);
       }
     deDuped.forEach(parent => {
       parent.value = parentValues.filter(value => value.id === parent.cid.toString()).pop().value;
@@ -150,14 +96,17 @@ class IPFS_COL_Node extends Data {
   }
 
   // make node a child of self
-  async insert(node, linkName, keys=null){
-    await Promise.all([this.ready, node.ready]);
+  async insert(nodes, keys=null){
+    const readies = nodes.map(node => node.ready);
+    await Promise.all([this.ready, ...readies]);
     //console.log(`linking ${linkName} to ${this.name}`);
     let value = Object.assign({}, this.value);
-    value[linkName] = node.cid;
+    for(const node of nodes){
+      value[node.name] = node.cid;
+      node.parents.push(this);
+    }
     this.value = value;
-    node.parents.push(this);
-    return this.write(node?.name ? node.name : '', keys)
+    return this.write(this?.name ? this.name : '', keys)
                .then(() => {
 //console.log(`insert() is going to fizz() ${this.name}: `);
 //console.log(`and ${this.name}'s parents are: `, this?.parents);
