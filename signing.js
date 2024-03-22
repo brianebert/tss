@@ -119,7 +119,6 @@ export class SigningAccount extends StellarAccount {
 
   // uses a signature as randomness input.
   async deriveKeys(secret=null, constants){
-console.log(`deriving keys with secret: ${secret}`);
     if(secret){
       var kp = Keypair.fromSecret(secret);
       if(kp.publicKey() !== this.account.id)

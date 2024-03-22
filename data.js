@@ -37,16 +37,15 @@ class Datums extends SetOf {
 // wraps a multiformats block in accessors, caching, and methods for writing and reading
 // to and from ipfs with asymetric and shared key libsodium encryption
 class Data {
-  #block; #cid; #ephemeral; #rawBytes; #ready; #size;
+  #block; #cid; #rawBytes; #ready; #size;
   constructor(data, codec=cbor){
     this.codec = codec;
     if(data instanceof Block.Block){
       this.#block = data;
       this.#cid = data.cid;
       this.#rawBytes = new Uint8Array(0);
-      this.#ephemeral = true;
-      this.#size = data.byteLength;
       this.#ready = Promise.resolve(this);
+      this.#size = data.byteLength;
     }
     else {
       this.value = data;
@@ -61,10 +60,6 @@ class Data {
 
   get cid(){ 
     return this.#cid
-  }
-
-  get ephemeral(){
-    return this.#ephemeral
   }
 
   get links(){
@@ -86,11 +81,6 @@ class Data {
     return this.#cid = theCid
   }
 
-  set ephemeral(state){
-console.log(`setting this.#ephemeral to ${state}`);
-    return this.#ephemeral = state
-  }
-
   set value(obj){
     try{
       this.#ready = Block.encode({value: obj, codec: this.codec, hasher}).then(theThen.bind(this))
@@ -99,7 +89,6 @@ console.log(`setting this.#ephemeral to ${state}`);
     }
     function theThen(block){
       this.#size = block.byteLength;
-      this.#ephemeral = true;
       this.#cid = block.cid;
       this.#block = block;
       return this
@@ -182,7 +171,6 @@ console.log(`setting this.#ephemeral to ${state}`);
     const instance = new this(block);
     instance.#rawBytes = rawBytes;
     instance.#size = rawBytes.byteLength;
-    instance.#ephemeral = false;
     instance.#cid = cid;
     this.cache.add(instance);
     await instance.ready
@@ -238,7 +226,6 @@ console.log(`setting this.#ephemeral to ${state}`);
       try{
         localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes));
         if(DEBUG) console.log(`added ${this.name}, ${this.#cid.toString()} to localStorage`);
-        this.#ephemeral = false;
         if(deleteLast && Object.hasOwn(localStorage, lastAddress)){
           localStorage.removeItem(lastAddress);
           if(DEBUG) console.log(`removed last address of ${this.name}, ${lastAddress}, from localStorage`);
@@ -271,11 +258,7 @@ console.log(`setting this.#ephemeral to ${state}`);
         }
         return request(`${Data.sink.url(lastAddress).replace('add', 'update')}&arg=${writeResponse.Key}`, {method: 'POST'})
       })
-      .then(response => {
-        const pinResponse = JSON.parse(response);
-        this.#ephemeral = false;
-        return this
-      })
+      .then(response => this)
       .catch(error => console.error(`error persisting ${this.name}: `, error))
   }
 }
