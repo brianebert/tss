@@ -47,15 +47,29 @@ class IPFS_COL_Node extends Data {
     for(let i=0; i < nodes.length; i++)
       for(let j=0; j < parentValues.length; j++){
         parentValues[j].value[`${parentValues[j].name}_last`] = CID.parse(parentValues[j].id);
-        if(Object.keys(parentValues[j].value).includes(nodes[i].name && !nodes[i].cid))
+/*console.log(`${parentValues[j].name} has value `, parentValues[j].value);
+console.log(`${nodes[i].name} cid is `, nodes[i].cid);
+console.log(`the keys of ${nodes[i].name}.value are `, Object.keys(parentValues[j].value));
+console.log(`and they ${Object.keys(parentValues[j].value).includes(nodes[i].name) ? 'do' : 'do not'} include ${nodes[i].name}`);
+*/ 
+        if(Object.keys(parentValues[j].value).includes(nodes[i].name))
+          if(nodes[i].cid === undefined)
+            delete parentValues[j].value[nodes[i].name];
+          else
+            parentValues[j].value[nodes[i].name] = nodes[i].cid;
+ /*      if(Object.keys(parentValues[j].value).includes(nodes[i].name) && nodes[i].cid === undefined) {
           delete parentValues[j].value[nodes[i].name];
+//console.log(`have deleted ${nodes[i].name} property from `, parentValues[j].value);
+        }
         else
-          parentValues[j].value[nodes[i].name] = nodes[i].cid;
+          parentValues[j].value[nodes[i].name] = nodes[i].cid;*/
         parentValues[j].value['modified_at'] = new Date().toUTCString();
       }
+//console.log(`have modified parentValues as `, parentValues);
     deDuped.forEach(parent => {
       parent.value = parentValues.filter(value => value.id === parent.cid.toString()).pop().value;
     });
+//console.log(`deDuped is `, deDuped);
     // they aren't encrypted until written
     return Promise.all(Array.from(deDuped).map(parent => parent.write(parent.name, keys)))
       .then(fizzed => this.fizz(fizzed, keys))
@@ -91,6 +105,7 @@ class IPFS_COL_Node extends Data {
     await this.ready;
     console.log(`deleting ${this.name}`)
     Data.rm(this.cid);
+console.log(`have rm'd `, this.cid.toString());
     this.cid = undefined;
     return IPFS_COL_Node.fizz([this], keys)
   }
