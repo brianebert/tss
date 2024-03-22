@@ -63,13 +63,6 @@ class Data {
     return this.#cid
   }
 
-//  get data(){
-  //  const value = Object.assign({}, this.#block.value);
-    //for(let key of Object.keys(this.links))
-    //  delete value[key];
-  //  return value
-//  }
-
   get ephemeral(){
     return this.#ephemeral
   }
@@ -168,7 +161,6 @@ console.log(`setting this.#ephemeral to ${state}`);
     cid = CID.asCID(cid) ? cid : CID.parse(cid);
     const cached = this.cache.fetch({cid: cid});
     if(cached){
-//console.log(`read ${cached.cid.toString()} from cache`);
       return Promise.resolve(cached)      
     }
 
@@ -224,7 +216,7 @@ console.log(`setting this.#ephemeral to ${state}`);
 
   async write(name='', keys=null, cache=true, deleteLast=false){
     await this.#ready;
-//console.log(`writing ${this.name} with keys ${!!keys}`);
+
     if(keys){
       const cipherText = await Data.lock(this.#block.bytes, keys);
       const block = await Block.encode({value: cipherText, codec: raw, hasher});
@@ -256,7 +248,6 @@ console.log(`setting this.#ephemeral to ${state}`);
         console.error(`failed to save ${this.name} correctly: `, err);
         return Promise.reject(this)
       }
-//console.log(`going to try writing to ${Data.sink.url(this.#cid)} with bytes: `, bytes);
     return request(
       // calling sink.url() with a cid returns a block/put url
         Data.sink.url(this.#cid),
@@ -273,21 +264,16 @@ console.log(`setting this.#ephemeral to ${state}`);
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
         try {
           const pinLsResponse = JSON.parse(await request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'}));
-//console.log(`/pin/ls?arg=${lastAddress} response is `, pinLsResponse);
           if(Object.hasOwn(pinLsResponse, 'Type') && pinLsResponse.Type === 'error')
             throw new Error(`No pin found for ${lastAddress}`)
         } catch {
-//console.log(`did not find a pin for ${this.name}_last at ${lastAddress}, so returning call to /pin/add?arg=${writeResponse.Key}`);
           return request(Data.sink.url(writeResponse.Key), {method: 'POST'}) 
         }
-//console.log(`found a pin for ${lastAddress}, so calling /pin/update${writeResponse.Key}`);
         return request(`${Data.sink.url(lastAddress).replace('add', 'update')}&arg=${writeResponse.Key}`, {method: 'POST'})
       })
       .then(response => {
-//console.log(`lets have a look at the pinning response: `, response);
         const pinResponse = JSON.parse(response);
         this.#ephemeral = false;
-//console.log(`this.#ephemeral is ${this.#ephemeral} and pin response is `, pinResponse);
         return this
       })
       .catch(error => console.error(`error persisting ${this.name}: `, error))

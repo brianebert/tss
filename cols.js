@@ -27,6 +27,7 @@ class IPFS_COL_Node extends Data {
     return this?.value.colName
   }
 
+  // percolate hash changes through parents generation by generation
   static fizz(nodes, keys){
     if(nodes.length === 1 && nodes[0].parents.length === 0)
       return Promise.resolve(nodes[0])
@@ -35,6 +36,7 @@ class IPFS_COL_Node extends Data {
     for(let i=0; i < nodes.length; i++)
       for(let j=0; j < nodes[i].parents.length; j++)
         deDuped.add(nodes[i].parents[j]);
+    // make copies of their block values, along with id and name
     const parentValues = Array.from(deDuped)
                               .map(parent => new Object({
                                 id: parent.cid.toString(),
@@ -42,36 +44,25 @@ class IPFS_COL_Node extends Data {
                                 value: Object.assign({}, parent.value)
                               })
                             );
-//parentValues.map(parent => console.log(`${parent.id}´s values are: `, parent.value));
-    // and update their link values
+    // update copies' link values
     for(let i=0; i < nodes.length; i++)
       for(let j=0; j < parentValues.length; j++){
-        parentValues[j].value[`${parentValues[j].name}_last`] = CID.parse(parentValues[j].id);
-/*console.log(`${parentValues[j].name} has value `, parentValues[j].value);
-console.log(`${nodes[i].name} cid is `, nodes[i].cid);
-console.log(`the keys of ${nodes[i].name}.value are `, Object.keys(parentValues[j].value));
-console.log(`and they ${Object.keys(parentValues[j].value).includes(nodes[i].name) ? 'do' : 'do not'} include ${nodes[i].name}`);
-*/ 
+        parentValues[j].value[`${parentValues[j].name}_last`] = CID.parse(parentValues[j].id); 
+        // are you my parent? then update my link.
         if(Object.keys(parentValues[j].value).includes(nodes[i].name))
           if(nodes[i].cid === undefined)
             delete parentValues[j].value[nodes[i].name];
           else
             parentValues[j].value[nodes[i].name] = nodes[i].cid;
- /*      if(Object.keys(parentValues[j].value).includes(nodes[i].name) && nodes[i].cid === undefined) {
-          delete parentValues[j].value[nodes[i].name];
-//console.log(`have deleted ${nodes[i].name} property from `, parentValues[j].value);
-        }
-        else
-          parentValues[j].value[nodes[i].name] = nodes[i].cid;*/
         parentValues[j].value['modified_at'] = new Date().toUTCString();
       }
-//console.log(`have modified parentValues as `, parentValues);
     deDuped.forEach(parent => {
+      // calls Data instance's value(v) setter that hashes a new block from v
       parent.value = parentValues.filter(value => value.id === parent.cid.toString()).pop().value;
     });
-//console.log(`deDuped is `, deDuped);
-    // they aren't encrypted until written
+    // blocks aren't encrypted until written
     return Promise.all(Array.from(deDuped).map(parent => parent.write(parent.name, keys)))
+      // now there is a cid for the encrypted block
       .then(fizzed => this.fizz(fizzed, keys))
   }
 
@@ -105,7 +96,6 @@ console.log(`and they ${Object.keys(parentValues[j].value).includes(nodes[i].nam
     await this.ready;
     console.log(`deleting ${this.name}`)
     Data.rm(this.cid);
-console.log(`have rm'd `, this.cid.toString());
     this.cid = undefined;
     return IPFS_COL_Node.fizz([this], keys)
   }
@@ -114,7 +104,6 @@ console.log(`have rm'd `, this.cid.toString());
   async insert(nodes, keys=null){
     const readies = nodes.map(node => node.ready);
     await Promise.all([this.ready, ...readies]);
-    //console.log(`linking ${linkName} to ${this.name}`);
     let value = Object.assign({}, this.value);
     for(const node of nodes){
       value[node.name] = node.cid;
@@ -122,12 +111,7 @@ console.log(`have rm'd `, this.cid.toString());
     }
     this.value = value;
     return this.write(this?.name ? this.name : '', keys)
-               .then(() => {
-//console.log(`insert() is going to fizz() ${this.name}: `);
-//console.log(`and ${this.name}'s parents are: `, this?.parents);
-//console.log(`The type of this.insert() is ${typeof this?.insert}`);
-                return IPFS_COL_Node.fizz([this], keys)
-               }) 
+               .then(() => IPFS_COL_Node.fizz([this], keys)) 
   }
 
   // change value of self
