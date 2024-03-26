@@ -27,12 +27,10 @@ export class SigningAccount extends StellarAccount {
     this.#ready = new Promise(resolve => {
       return this.deriveKeys(secret, constants)
          .then(() => {
-           console.log(`derived signing keys and setting #canSign true`);
            this.#canSign = true;
            resolve(true)
          })
          .catch(err => {
-           console.error(`did not derive SigningAccount keys because: `, err);
            this.#canSign = false;
            resolve(true)
          })

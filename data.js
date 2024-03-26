@@ -190,13 +190,7 @@ class Data {
     return request(
         this.sink.url(cid.toString()).replace('add', 'ls'), {method: 'POST'}
       )
-      .then(response => JSON.parse(response))
-      .then(pin => {
-        if(DEBUG) console.log(`rm(${cid.toString()}) found pin: `, pin);
-        return request(this.sink.url(cid.toString()).replace('add', 'rm'), {method: 'POST'}) //*****
-      })
-      .then(response => JSON.parse(response))
-      .then(unPin => console.log(`Data.rm(${cid.toString()}) unpinned: `, unPin))
+      .then(response => request(this.sink.url(cid.toString()).replace('add', 'rm'), {method: 'POST'}))
       .catch(err => 
         console.error(`error unpinning ${cid.toString()}:`, err)
       )

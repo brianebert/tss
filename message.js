@@ -11,6 +11,10 @@ import {COL_Node} from './cols.js';
 const MESSAGE_TOKENS = ['MessageMe', 'ShareData'];
 const STELLAR_TX_CODEC_CODE = 0xd1;
 
+function abrevIt(s, i){
+  return `${s.slice(0,i)}...${s.slice(-i)}`
+}
+
 // queues messages identified in account's payment stream ontil finding one marked by a MessagesRead token
 function untilMarkedRead(payment){
   // found a message marked read. returning true stops reader
@@ -38,7 +42,7 @@ async function readerDone(readerResult){
     readerResult.recordQueue.sort((a, b) => Date.parse(a.created_at) > Date.parse(b.created_at) ? 1 : -1);
     const txHashStr = readerResult.recordQueue.slice(-1).pop().transaction_hash;
     const txHash = Buffer.from(txHashStr, 'hex');
-    console.log(`marking messages read up to Tx hash ${txHashStr.slice(0,5)}...${txHashStr.slice(-5)}`);
+    console.log(`${abrevIt(this.id, 5)} marking messages read up to Tx hash ${abrevIt(txHashStr, 5)}`);
     await this.tx([
       Operation.payment({
         destination: this.account.id, 
