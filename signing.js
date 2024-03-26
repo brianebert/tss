@@ -4,11 +4,8 @@ import {Keypair, StrKey} from "stellar-base";
 import {AccountWatcher, AccountDigger} from './apiReaders.js';
 import {COL_Node, request} from './cols.js';
 import {StellarAccount} from './stellar.js';
-//import {request} from './http.js';
 import * as Sodium from './na.js';
 
-// Stellar api server
-const HORIZON = 'https://horizon.stellar.org';
 const wallet = freighterApi;
 
 // repository for keys derived to automate encryption, decryption and block chain use
