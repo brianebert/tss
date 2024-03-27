@@ -1,5 +1,4 @@
 const isBrowser=new Function("try {return this===window;}catch(e){ return false;}")();
-console.log(`isBrowser is`, isBrowser);
 console.log(isBrowser ? `detected browser` : `detected node`);
 
 // fill in missing global dependencies
@@ -19,7 +18,6 @@ else {
     getItem: function(key){return this[key]},
     removeItem: function(key){delete this.key}
   };
-  console.warn(`using VOLATILE node global.localStorage: `, global.localStorage);
 }
 
 // concattenate lines of multifunction form data request body

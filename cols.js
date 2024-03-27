@@ -10,7 +10,7 @@ import { CID } from 'multiformats/cid';
 // adds properties refering to a parent nodes and a timestamp
 // and methods for inserting, deleting, and updating nodes
 // while maintaining their hash links (in bubbleBubble())
-class IPFS_COL_Node extends Data {
+class COL_Node extends Data {
   #parents;
   constructor(data){
     if(!Object.hasOwn(data, 'created_at'))
@@ -97,7 +97,7 @@ class IPFS_COL_Node extends Data {
     console.log(`deleting ${this.name}`)
     Data.rm(this.cid);
     this.cid = undefined;
-    return IPFS_COL_Node.fizz([this], keys)
+    return COL_Node.fizz([this], keys)
   }
 
   // make node a child of self
@@ -111,7 +111,7 @@ class IPFS_COL_Node extends Data {
     }
     this.value = value;
     return this.write(this?.name ? this.name : '', keys)
-               .then(() => IPFS_COL_Node.fizz([this], keys)) 
+               .then(() => COL_Node.fizz([this], keys)) 
   }
 
   // change value of self
@@ -133,9 +133,9 @@ class IPFS_COL_Node extends Data {
     value[`${this.name}_last`] = this.cid;
     this.value = value;
     return this.write(this.name, keys)
-               .then(writeResult => IPFS_COL_Node.fizz([this], keys))
+               .then(writeResult => COL_Node.fizz([this], keys))
   }
 }
 
 
-export {IPFS_COL_Node as COL_Node, request}
+export {COL_Node, request}
