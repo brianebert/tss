@@ -220,7 +220,7 @@ class Data {
       try{
         localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes));
         if(DEBUG) console.log(`added ${this.name}, ${this.#cid.toString()} to localStorage`);
-        if(deleteLast && Object.hasOwn(localStorage, lastAddress)){
+        if(deleteLast && !!lastAddress && Object.hasOwn(localStorage, lastAddress)){
           localStorage.removeItem(lastAddress);
           if(DEBUG) console.log(`removed last address of ${this.name}, ${lastAddress}, from localStorage`);
         }
