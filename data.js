@@ -196,7 +196,7 @@ class Data {
       )
   }
 
-  async write(name='', keys=null, cache=true, deleteLast=false){
+  async write(name='', keys=null, cache=true, deleteLast=true){
     await this.#ready;
 
     if(keys){
