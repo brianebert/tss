@@ -35,14 +35,16 @@ class Encrypted_Node extends COL_Node {
   static async fromSigningAccount(account, dataRootLabel, keys=null){
     const root = await SigningAccount.dataEntry(account, dataRootLabel);
     console.log(`looked up data root: ${root.toString()}`)
-    if(root.length === 0){
-      var node = new this({colName: dataRootLabel}, account, dataRootLabel);
-      await node.ready;
-    }
-    else {
-      var node = await this.fromCID(account, root.toString(), keys);
-      node.#dataRootLabel = dataRootLabel;
-    }
+    if(root.length > 0)
+      try {
+        const node = await this.fromCID(account, root.toString(), keys);
+        node.#dataRootLabel = dataRootLabel;
+        return node        
+      } catch {
+        console.log(`was not able to find data for ${root.toString()}`);
+      }
+    const node = new this({colName: dataRootLabel}, account, dataRootLabel);
+    await node.ready;    
     return node
   }
 

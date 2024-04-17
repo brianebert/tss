@@ -14,9 +14,16 @@ import * as sodium from './na.js';
 const DEBUG = true;
 
 class IPFS_Provider {
-  #url;
-  constructor(){
+  #options; #url;
+  constructor(options){
+    this.#options = options || {};
     this.#url = false;
+  }
+  set updateOptionsWith(option){
+    this.#options = Object.assign(this.#options, option);
+  }
+  get options(){
+    return this.#options
   }
   set url(url){
     this.#url = url;
@@ -102,8 +109,8 @@ class Data {
   static cache = new Datums(100);
 
   // 
-  static sink = new IPFS_Provider();
-  static source = new IPFS_Provider();
+  static source = new IPFS_Provider({headers: {"Accept": "application/vnd.ipld.raw"}});
+  static sink = new IPFS_Provider({method: 'POST'});
 
   // used when authenticating a block and requesting a cid from ipfs/block/put
   static codecForCID(cid){
@@ -154,7 +161,7 @@ class Data {
     }
 
     if(this.source.url)
-      var rawBytes = await request(this.source.url(cid), {headers: {"Accept": "application/vnd.ipld.raw"}});
+      var rawBytes = await request(this.source.url(cid), this.source.options);
     else
       var rawBytes = Object.values(JSON.parse(localStorage.getItem(cid.toString())));
     // rawBytes are either an ArrayBuffer or Array
@@ -188,9 +195,9 @@ class Data {
     }
     // calling sink.url() with string returns pin/add url
     return request(
-        this.sink.url(cid.toString()).replace('add', 'ls'), {method: 'POST'}
+        this.sink.url(cid.toString()).replace('add', 'ls'), this.sink.options
       )
-      .then(response => request(this.sink.url(cid.toString()).replace('add', 'rm'), {method: 'POST'}))
+      .then(response => request(this.sink.url(cid.toString()).replace('add', 'rm'), this.sink.options))
       .catch(err => 
         console.error(`error unpinning ${cid.toString()}:`, err)
       )
@@ -236,7 +243,7 @@ class Data {
           data: bytes,
           type: "application/octet-stream",
           'name': name
-        }])
+        }], Data.sink.options)
       )
       .then(async response => {
         const writeResponse = JSON.parse(response);
@@ -244,13 +251,13 @@ class Data {
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
         try {
-          const pinLsResponse = JSON.parse(await request(Data.sink.url(lastAddress).replace('add', 'ls'), {method: 'POST'}));
+          const pinLsResponse = JSON.parse(await request(Data.sink.url(lastAddress), Data.sink.options));
           if(Object.hasOwn(pinLsResponse, 'Type') && pinLsResponse.Type === 'error')
             throw new Error(`No pin found for ${lastAddress}`)
-        } catch {
-          return request(Data.sink.url(writeResponse.Key), {method: 'POST'}) 
+          await request(Data.sink.url(lastAddress).replace('ls', 'rm'), Data.sink.options)
+        } catch(err) {
+          console.warn(`no pin found for lastAddress: ${lastAddress}`);
         }
-        return request(`${Data.sink.url(lastAddress).replace('add', 'update')}&arg=${writeResponse.Key}`, {method: 'POST'})
       })
       .then(response => this)
       .catch(error => console.error(`error persisting ${this.name}: `, error))

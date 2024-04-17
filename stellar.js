@@ -10,9 +10,8 @@ import * as cbor from '@ipld/dag-cbor';
 import { CID } from 'multiformats/cid';
 
 import {AccountDigger} from './apiReaders.js';
-import {COL_Node, request} from './cols.js';
 import {MessageWatcher} from './message.js';
-import * as Sodium from './na.js'
+import {request} from './cols.js';
 
 const HORIZON = 'https://horizon.stellar.org';
 const MESSAGE_PRICE = '0.1000000';
@@ -225,7 +224,7 @@ export class StellarAccount {
   }
 
   // construct, sign and send transactions on Stellar with cid digest in memo
-  tx(operations, cid=null){
+  tx(operations, cid=null, keypairs=[]){
     return Promise.all([this.reload(), request(`${HORIZON}/fee_stats`)])
       .then(([account, stats]) => new TransactionBuilder(
          new Account(account.id, account.sequence),
@@ -237,21 +236,28 @@ export class StellarAccount {
           }
       ))
       .then(async bldr => {
-        if(cid)
+        if(!!cid)
           bldr.addMemo(new Memo(MemoHash, Buffer.from(cid.multihash.digest)));
-        for(const op of operations)
+        for(const op of operations){
           bldr.addOperation(op);  
+        }
         let tx = bldr.build();
         if(0 === this.#account.signers.filter(signer => signer.key === StrKey.encodeEd25519PublicKey(this.ed25519.pk)).length ||
            this.ed25519 === null) {
           console.log(`didn't find ed25519 signer`);
           var signedXDR = await wallet.signTransaction(tx.toXDR())
         } else {
-          // if there are signing keys, sign and submit the transaction
+          // sign with instance's ed25519 key
           const signedTx = tx.sign(Keypair.fromRawEd25519Seed(this.ed25519.sk));
           var signedXDR = tx.toXDR();
         }
-        //console.log(`submitting XDR: ${signedXDR}`);
+        // add signatures from any key pairs submitted with the transaction
+        if(keypairs.length > 0){
+          const tx = TransactionBuilder.fromXDR(signedXDR, Networks.PUBLIC);
+          tx.sign(...keypairs);
+          signedXDR = tx.toXDR();
+        }
+        console.log(`submitting XDR: ${signedXDR}`);
         return StellarAccount.submitTx(signedXDR)
       })    
   }
