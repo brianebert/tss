@@ -7,8 +7,8 @@ if(isBrowser) {
   await import('buffer').then(mod => window.Buffer = mod.Buffer);
 }
 else {
-  var [Blob, Buffer, https] = await Promise.all([import('buffer'), import('https')])
-      .then(([bufMod, httpMod]) => [bufMod.Blob, bufMod.Buffer, httpMod]);
+  var [Blob, Buffer, https, http] = await Promise.all([import('buffer'), import('https'), import('http')])
+      .then(([bufMod, https, http]) => [bufMod.Blob, bufMod.Buffer, https, http]);
   await import('eventsource').then((EventSource) => global.EventSource = EventSource.default);
   await import('ws').then(WS => global.WebSocket = WS.default);
   global.localStorage = {
@@ -19,6 +19,11 @@ else {
     removeItem: function(key){delete this.key}
   };
 }
+
+//remove these
+//console.log(`http is `, http);
+//console.log(`https is `, https);
+//console.log(`still interpreting http.js`);
 
 // concattenate lines of multifunction form data request body
 function abConcat(arrays){
@@ -113,7 +118,8 @@ export function request(url, options={}, logArray=[]){
       }
     }
     else { // before use this needs to condition options for post
-      const req = https.request(url, options, (response) => {
+      const protocol = url.split(':')[0] === 'http' ? http : https;
+      const req = protocol.request(url, options, (response) => {
         let data;
         if(options?.headers && 'Accept' in options.headers && options.headers.Accept === 'application/vnd.ipld.raw'){
           data = new Uint8Array();
