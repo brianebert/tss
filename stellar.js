@@ -17,6 +17,8 @@ const HORIZON = 'https://horizon.stellar.org';
 const MESSAGE_PRICE = '0.1000000';
 const TXTIMEOUT = 60;
 
+const DEBUG = true;
+
 // a Stellar block chain account is used
 // - to name and store ipfs addresses (in account data entries)
 // - to share ipfs addresses between accounts (in transaction memos)
@@ -257,7 +259,7 @@ export class StellarAccount {
           tx.sign(...keypairs);
           signedXDR = tx.toXDR();
         }
-        console.log(`submitting XDR: ${signedXDR}`);
+        if(DEBUG) console.log(`submitting XDR: ${signedXDR}`);
         return StellarAccount.submitTx(signedXDR)
       })    
   }
