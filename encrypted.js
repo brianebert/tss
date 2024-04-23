@@ -49,6 +49,7 @@ class Encrypted_Node extends COL_Node {
   }
 
   static async copy(opts){
+console.log(`entered Encrypted_Node.copy() with opts: `, opts);
     const {signingAccount, address, inKeys, outKeys, traverse, dataRootLabel} = opts;
     const root = await this.fromCID(signingAccount, address, inKeys);
     const copyRoot = await root.copy(inKeys, outKeys, traverse);
@@ -60,34 +61,38 @@ class Encrypted_Node extends COL_Node {
   }
 
   async copy(inKeys=null, outKeys=null, traverse=false){
-console.log(`entered instance.copy with `, this, inKeys, outKeys);
+console.log(`entered instance.copy of ${this.name} with cid ${this.cid.toString()}`);
+console.log(`traverse is ${traverse}. inKeys and outKeys are:`, inKeys, outKeys);
     const graphNodes = []; // (hopefully) will use later cleaning cache and local storage
-    const needsReLinking = !!inKeys !== !!outKeys || !!inKeys && !!outKeys && 
-                           JSON.stringify(inKeys.reader) !== JSON.stringify(outKeys.writer);
+    const needsReLinking = (!!inKeys !== !!outKeys) || ((!!inKeys && !!outKeys) && 
+                           (JSON.stringify(inKeys.reader) !== JSON.stringify(outKeys.writer)));
     async function writeNode(node){
-      const keys = needsReLinking ? outKeys : null;
-      await node.write('', keys, false, false);
+      await node.write('', null, false, false);
       graphNodes.push(node);
     }
-    const linkMap = {};
     async function reWriteNode(node){
       const value = Object.assign({}, node.value);
       const links = Object.entries(node.links);
+      const linkMap = {};
       if(links.length > 1)
         for(const [name, cid] of links)
           if(!name.endsWith('_last'))
             value[name] = linkMap[cid.toString()].cid;
-      console.log(`graphNodes and linkMap are: `, graphNodes, linkMap);
-      const ptNode = await new Encrypted_Node(value, node.signingAccount).write('', outKeys, false, false);
-      linkMap[node.cid.toString()] = ptNode;
-      graphNodes.push(ptNode);
-      console.log(`graphNodes and linkMap are: `, graphNodes, linkMap);
+//console.log(`graphNodes and linkMap are: `, graphNodes, linkMap);
+      const rwNode = await new Encrypted_Node(value, node.signingAccount).write('', outKeys, false, false);
+      linkMap[node.cid.toString()] = rwNode;
+      graphNodes.push(rwNode);
+console.log(`graphNodes and linkMap are: `, graphNodes, linkMap);
     }
+    const callback = (!!inKeys !== !!outKeys) || ((!!inKeys && !!outKeys) &&
+                     (JSON.stringify(inKeys.reader) !== JSON.stringify(outKeys.writer)))
+                     ? reWriteNode : writeNode;
     if(traverse)
-      if(needsReLinking)
-        await Encrypted_Node.traverse(this.cid, reWriteNode, inKeys);
-      else
-        await Encrypted_Node.traverse(this.cid, writeNode, inKeys);
+      await Encrypted_Node.traverse(this.cid, callback, inKeys);
+      //if(needsReLinking)
+        //await Encrypted_Node.traverse(this.cid, reWriteNode, inKeys);
+      //else
+        //await Encrypted_Node.traverse(this.cid, writeNode, inKeys);
     else
       await writeNode(this);
     return graphNodes.pop();

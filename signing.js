@@ -58,7 +58,7 @@ export class SigningAccount extends StellarAccount {
   get keys(){
     return {
       readFrom: async (writer, pubLickeyLabel) => {
-        if(!this.#ec25519)
+        if(!this.#ec25519 || writer === 'plaintext')
           return Promise.resolve(null)
         if(writer === 'self')
           return Promise.resolve({
@@ -74,7 +74,7 @@ export class SigningAccount extends StellarAccount {
           )
       },
       writeTo: async (reader, pubLickeyLabel) => {
-        if(!this.#ec25519)
+        if(!this.#ec25519 || reader === 'plaintext')
           return Promise.resolve(null)
         if(reader === 'self')
           return Promise.resolve({

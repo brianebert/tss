@@ -213,7 +213,8 @@ class Data {
       this.#cid = block.cid;
     }
 
-    const bytes = !keys && this.#cid.toString() === this.#block.cid.toString() ? this.#block.bytes : this.#rawBytes
+    const bytes = !keys && this.#cid.toString() === this.#block.cid.toString() ? this.#block.bytes : this.#rawBytes;
+console.log(`using ${bytes.byteLength} bytes from cid ${this.#cid.toString()} block.cid ${this.#block.cid}`);
 
     this.#size = bytes.byteLength;
 

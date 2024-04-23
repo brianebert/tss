@@ -157,7 +157,7 @@ export class StellarAccount {
       pk = this.ed25519.pk;
     const account = await this.reload();
     const pkStr = StrKey.encodeEd25519PublicKey(pk);
-    for(let signer of this.account.signers)
+    for(let signer of Array.from(account.signers))
       if(signer.key === pkStr)
         return account
 
