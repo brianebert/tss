@@ -70,10 +70,12 @@ console.log(`traverse is ${traverse}. inKeys and outKeys are:`, inKeys, outKeys)
       await node.write('', null, false, false);
       graphNodes.push(node);
     }
+    const linkMap = {};
     async function reWriteNode(node){
+console.log(`reWriteNode is processing ${node.name}`);
+console.log(`node.value is: `, node.value);
       const value = Object.assign({}, node.value);
       const links = Object.entries(node.links);
-      const linkMap = {};
       if(links.length > 1)
         for(const [name, cid] of links)
           if(!name.endsWith('_last'))

@@ -159,9 +159,9 @@ class Data {
     if(cached){
       return Promise.resolve(cached)      
     }
-
-    if(this.source.url)
+    if(this.source.url){
       var rawBytes = await request(this.source.url(cid), this.source.options);
+    }
     else
       var rawBytes = Object.values(JSON.parse(localStorage.getItem(cid.toString())));
     // rawBytes are either an ArrayBuffer or Array
@@ -214,7 +214,6 @@ class Data {
     }
 
     const bytes = !keys && this.#cid.toString() === this.#block.cid.toString() ? this.#block.bytes : this.#rawBytes;
-console.log(`using ${bytes.byteLength} bytes from cid ${this.#cid.toString()} block.cid ${this.#block.cid}`);
 
     this.#size = bytes.byteLength;
 
@@ -251,14 +250,19 @@ console.log(`using ${bytes.byteLength} bytes from cid ${this.#cid.toString()} bl
         if(DEBUG) console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
-        try {
-          const pinLsResponse = JSON.parse(await request(Data.sink.url(lastAddress), Data.sink.options));
+
+        /*request(Data.sink.url(writeResponse.Key), Data.sink.options).then(response => {
+          const pinLsResponse = JSON.parse(response);
           if(Object.hasOwn(pinLsResponse, 'Type') && pinLsResponse.Type === 'error')
-            throw new Error(`No pin found for ${lastAddress}`)
-          await request(Data.sink.url(lastAddress).replace('ls', 'rm'), Data.sink.options)
-        } catch(err) {
-          console.warn(`no pin found for lastAddress: ${lastAddress}`);
-        }
+            request(Data.sink.url(writeResponse.Key).replace('ls', 'add'), Data.sink.options);
+        }).catch(err => console.warn(`pinning ${writeResponse.Key} caused error: `, err));
+        if(deleteLast)
+          request(Data.sink.url(lastAddress), Data.sink.options).then(response => {
+            const pinLsResponse = JSON.parse(response);
+            if(Object.hasOwn(pinLsResponse, 'Type') && pinLsResponse.Type === 'error')
+              request(Data.sink.url(lastAddress).replace('ls', 'rm'), Data.sink.options);
+          }).catch(err => console.warn(`pinning ${writeResponse.Key} caused error: `, err));
+        */
       })
       .then(response => this)
       .catch(error => console.error(`error persisting ${this.name}: `, error))
