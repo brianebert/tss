@@ -85,18 +85,20 @@ export class StellarAccount {
   }
 
   // creates or updates Stellar market offers for stellarAccount
+  // sets some defaults for backward compatibility
+  // sets message price for anti-spam
   static sellOffer(stellarAccount, opts){
-    const buy = Asset.native();
-    const sell = new Asset(opts.selling, stellarAccount.account.id);
-    return this.offers(stellarAccount, Object.fromEntries(new Map([[opts.selling, true]])))
+    if(!Object.hasOwn(opts, 'amount')) opts.amount = '100';
+    if(!Object.hasOwn(opts, 'buy')) opts.buy = Asset.native();
+    return this.offers(stellarAccount, Object.fromEntries([[opts.selling, true]]))
       .then(offers => offers.length ? offers.pop() : {})
       .then(offer => offer.price === MESSAGE_PRICE ? Promise.resolve(offer) : stellarAccount.tx([
           Operation.manageSellOffer({
             offerId: offer?.id ? offer.id : '0',
             price: MESSAGE_PRICE,
-            selling: sell,
-            buying: buy,
-            amount: '100'
+            selling: new Asset(opts.selling, stellarAccount.account.id),
+            buying: opts.buy,
+            amount: opts.amount
           })
         ])
       )
@@ -207,20 +209,20 @@ export class StellarAccount {
   }
 
   // returns Buffer of value for account.data[label]
-  setDataEntry(label, value){
+  setDataEntry(label, value=null){
     return StellarAccount.dataEntry(this, label).then(oldValue => {
       // if no change to value, return it
-      let isEqual = value.length === oldValue.length;
-      for(let i = 0; i < value.length && isEqual; i++)
-        isEqual = value[i] === oldValue[i];
-      if(isEqual)
-        return oldValue
-      else {
-        // otherwise set value of account.data[label] first, then return it
-        return this.tx([Operation.manageData({name: label, value: value})])
-                   .then(txResult => this.reload())
-                   .then(account => Buffer.from(account.data[label], 'base64'))
+      if(value !== null){
+        let isEqual = value.length === oldValue.length;
+        for(let i = 0; i < value.length && isEqual; i++)
+          isEqual = value[i] === oldValue[i];
+        if(isEqual)
+          return oldValue
       }
+      // otherwise set value of account.data[label] first, then return it
+      return this.tx([Operation.manageData({name: label, value: value})])
+                 .then(txResult => this.reload())
+                 .then(account => Buffer.from(account.data[label], 'base64'))
     })
     
   }
