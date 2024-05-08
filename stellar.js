@@ -90,9 +90,13 @@ export class StellarAccount {
   static sellOffer(stellarAccount, opts){
     if(!Object.hasOwn(opts, 'amount')) opts.amount = '100';
     if(!Object.hasOwn(opts, 'buy')) opts.buy = Asset.native();
+console.log(`called StellarAccount.sellOffer(opts) with opts `, opts);
     return this.offers(stellarAccount, Object.fromEntries([[opts.selling, true]]))
-      .then(offers => offers.length ? offers.pop() : {})
-      .then(offer => offer.price === MESSAGE_PRICE ? Promise.resolve(offer) : stellarAccount.tx([
+      .then(offers => {
+console.log(`found offers: `, offers);
+        return offers.length ? offers.pop() : {}
+      })
+      .then(offer => opts.amount !== '0' && offer?.price === MESSAGE_PRICE ? Promise.resolve(offer) : stellarAccount.tx([
           Operation.manageSellOffer({
             offerId: offer?.id ? offer.id : '0',
             price: MESSAGE_PRICE,
