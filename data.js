@@ -236,6 +236,7 @@ class Data {
         console.error(`failed to save ${this.name} correctly: `, err);
         return Promise.reject(this)
       }
+console.log(`going to call ${Data.sink.url(this.#cid)} with options `, Data.sink.options);
     return request(
       // calling sink.url() with a cid returns a block/put url
         Data.sink.url(this.#cid),
@@ -246,6 +247,7 @@ class Data {
         }], Data.sink.options)
       )
       .then(async response => {
+console.log(`block/put response is: `, response);
         const writeResponse = JSON.parse(response);
         if(DEBUG) console.log(`wrote ${this.name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
