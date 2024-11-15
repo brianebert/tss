@@ -109,9 +109,11 @@ export class SigningAccount extends StellarAccount {
     const walletConnection = await wallet.isConnected();
 console.log(`walletConnection is `, walletConnection);
     if(walletConnection){
+      // submit Tx to wallet and use signature to seed key derivation
 console.log(`walletConnection is ${walletConnection} and wallet public key is ${await wallet.getPublicKey()}`);
       return wallet.getPublicKey().then(address => new this(address))
     }
+    // or make random non-signing account
     const kp = Keypair.random();
     return Promise.resolve(new this(kp.publicKey()))
   }
