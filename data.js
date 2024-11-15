@@ -5,13 +5,29 @@ import * as json from '@ipld/dag-json';
 import * as pb from '@ipld/dag-pb';
 import * as raw from 'multiformats/codecs/raw';
 import { sha256 as hasher } from 'multiformats/hashes/sha2';
-
+import { UnixFS } from 'ipfs-unixfs';
 //import Hash from 'ipfs-only-hash';
 import {SetOf} from './cache.js';
 import {mfdOpts, request} from './http.js';
 import * as sodium from './na.js';
 
+const BLOCK_SIZE = 262144; // 2**18
 const DEBUG = true;
+
+console.log(`dag-pb import is: `, pb);
+console.log(`UnixFS import is: `, UnixFS);
+const ufs = new UnixFS({type: 'file'});
+ufs.addBlockSize(354n);
+ufs.addBlockSize(256n);
+console.log(`UnixFS instance is: `, ufs);
+const marshalled = ufs.marshal();
+console.log(`marshaled is `, marshalled);
+const unmarshalled = UnixFS.unmarshal(marshalled);
+console.log(`UnixFS.unmarshal is `, unmarshalled);
+console.log(`unmarshalled.fileSize() is: `, unmarshalled.fileSize());
+console.log(`ufs.fileSize() is: `, ufs.fileSize());
+//const marshalled = ufs.prototype.marshal();
+//console.log(`marshalled: `, marshalled);
 
 class IPFS_Provider {
   #options; #url;
@@ -57,6 +73,8 @@ class Data {
     else {
       this.value = data;
     }
+    console.log(`this Data.source is `, Data.source);
+    console.log(`this Data.sink is `, Data.sink);
   }
 
   // access away
@@ -203,7 +221,15 @@ class Data {
       )
   }
 
-  async write(name='', keys=null, cache=true, deleteLast=true){
+  async write(name='', keys=null, cache=false, deleteLast=true){
+    await this.#ready;
+console.log(`called data.write() with ${this.#block.bytes.length} bytes`);
+    return this.#block.bytes.length > BLOCK_SIZE ?
+      this.writeChunks(name, keys, cache, deleteLast) :
+      this.writeChunk(name, keys, cache, deleteLast)
+  }
+
+  async writeChunk(name, keys, cache, deleteLast){
     await this.#ready;
 
     if(keys){
@@ -220,20 +246,20 @@ class Data {
     if(cache)
       Data.cache.add(this);
 
-    const lastAddress = Object.hasOwn(this.links, `${this.name}_last`) ? this.links[`${this.name}_last`].toString() : false;
+    const lastAddress = Object.hasOwn(this.links, `${name}_last`) ? this.links[`${name}_last`].toString() : false;
 
 
     if(!Data.sink.url)
       try{
         localStorage.setItem(this.#cid.toString(), JSON.stringify(bytes));
-        if(DEBUG) console.log(`added ${this.name}, ${this.#cid.toString()} to localStorage`);
+        if(DEBUG) console.log(`added ${name}, ${this.#cid.toString()} to localStorage`);
         if(deleteLast && !!lastAddress && Object.hasOwn(localStorage, lastAddress)){
           localStorage.removeItem(lastAddress);
           if(DEBUG) console.log(`removed last address of ${this.name}, ${lastAddress}, from localStorage`);
         }
         return Promise.resolve(this)
       } catch (err) {
-        console.error(`failed to save ${this.name} correctly: `, err);
+        console.error(`failed to save ${name} correctly: `, err);
         return Promise.reject(this)
       }
 console.log(`going to call ${Data.sink.url(this.#cid)} with options `, Data.sink.options);
@@ -249,7 +275,7 @@ console.log(`going to call ${Data.sink.url(this.#cid)} with options `, Data.sink
       .then(async response => {
 console.log(`block/put response is: `, response);
         const writeResponse = JSON.parse(response);
-        if(DEBUG) console.log(`wrote ${this.name} at ${writeResponse.Key}`);
+        if(DEBUG) console.log(`wrote ${name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
 
@@ -267,8 +293,40 @@ console.log(`block/put response is: `, response);
         */
       })
       .then(response => this)
-      .catch(error => console.error(`error persisting ${this.name}: `, error))
+      .catch(error => console.error(`error persisting ${name}: `, error))
+  }
+
+  async writeChunks(name, keys, cache, deleteLast){
+    const f = new UnixFS({type: 'file'});
+    let length = this.#block.bytes.length;
+    let i = 0, j = BLOCK_SIZE, links = [];
+    const Link = (cid, name, length) => `{"Hash":${cid},"Name":${name},"Tsize":${length}}`;
+    while(j <  length){
+      const chunk = await new Data(this.#block.bytes.slice(i,j), raw).writeChunk();
+      //await chunk.#ready;
+      //links.push(Link(chunk.cid, "", chunk.#block.bytes.length));
+      links.push(pb.createLink('', chunk.#block.bytes.length, chunk.cid));
+      f.addBlockSize(BigInt(chunk.#block.bytes.length));
+      i += BLOCK_SIZE;
+      j += BLOCK_SIZE;
+      console.log(`created chunk ${links.length} of ${chunk.#block.bytes.length} bytes`, chunk);
+      //console.log(`would make link: `, Link(chunk.cid, "", chunk.#block.bytes.length));
+    }
+  const chunk = await new Data(this.#block.bytes.slice(i), raw).writeChunk();
+  console.log(`created last chunk of ${chunk.#block.bytes.length} bytes`, chunk);
+  //links.push(Link(chunk.cid, "", chunk.#block.bytes.length))
+  links.push(pb.createLink('', chunk.#block.bytes.length, chunk.cid));
+  f.addBlockSize(BigInt(chunk.#block.bytes.length));
+  links.map(link => console.log(link));
+  //const data = pb.prepare({"Data": []});
+//console.log(`prepared data: `, data);
+console.log(`finished with UnixFS: `, f.marshal());
+  const pbNode = pb.createNode(f.marshal(), links);
+console.log(`created: `, pbNode);
+  const top = await new Data(pbNode, pb).writeChunk(name);
+console.log(`made top node: `, top);
+
   }
 }
 
-export {Data, request};
+export {Data, raw, request};

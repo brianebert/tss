@@ -20,11 +20,6 @@ else {
   };
 }
 
-//remove these
-//console.log(`http is `, http);
-//console.log(`https is `, https);
-//console.log(`still interpreting http.js`);
-
 // concattenate lines of multifunction form data request body
 function abConcat(arrays){
   let length = arrays.reduce((acc, value) => acc + value.length, 0);

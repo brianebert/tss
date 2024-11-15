@@ -106,8 +106,12 @@ export class SigningAccount extends StellarAccount {
   static async checkForWallet(accountId=null, secret=null){
     if(accountId)
       return Promise.resolve(new this(accountId, secret))
-    if(wallet.isBrowser && await wallet.isConnected())
+    const walletConnection = await wallet.isConnected();
+console.log(`walletConnection is `, walletConnection);
+    if(walletConnection){
+console.log(`walletConnection is ${walletConnection} and wallet public key is ${await wallet.getPublicKey()}`);
       return wallet.getPublicKey().then(address => new this(address))
+    }
     const kp = Keypair.random();
     return Promise.resolve(new this(kp.publicKey()))
   }
@@ -122,9 +126,11 @@ export class SigningAccount extends StellarAccount {
 
     // this gets called at the end. it calls libsodium
     function theThen(signedXdr){
+console.log(`theThen got signedXdr: `, signedXdr);
       const sig = SigningAccount.sigFromXDR(signedXdr);
       return Sodium.keysFromSig(sig, constants)
         .then(keys => {
+console.log(`got keys from sodium: `, keys);
           //console.log(`derived keys: `, keys);
           this.#ec25519 = keys.ec25519;
           this.#shareKX = keys.shareKX;
@@ -159,8 +165,15 @@ export class SigningAccount extends StellarAccount {
     }
 
     // if secret is falsy, use signature from wallet to derive keys
-    if(await wallet.isConnected() && await wallet.getPublicKey() === this.account.id)
-      return wallet.signTransaction(myPhrase.toXDR()).then(theThen.bind(this))
+console.log(`await wallet.isConnected() is `, await wallet.isConnected());
+console.log(`await wallet.getPublicKey() returns `, await wallet.getPublicKey());
+console.log(`this.account.id is `, this.account.id);
+    if((await wallet.isConnected()) && await wallet.getPublicKey() === this.account.id){
+console.log(`calling wallet.signTransaction next`);
+      return wallet.signTransaction(myPhrase.toXDR())
+                   //.then(result => result.signedTxXdr) // Shim for change in api
+                   .then(theThen.bind(this))
+    }
     else
       throw new Error(`Freighter account does not match Signing Account`)
   }
