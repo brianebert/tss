@@ -25,11 +25,33 @@ class IPFS_Provider {
   get options(){
     return this.#options
   }
-  set url(url){
+  set _url(url){
     this.#url = url;
   }
   get url(){
     return this.#url
+  }
+}
+
+class Source extends IPFS_Provider {
+  constructor(options){
+    super(options)
+  }
+  set url(url){
+    const startIndex = url.indexOf('{cid}');
+    const stopIndex = startIndex + '{cid}'.length;
+
+    this._url = cid => url.slice(0, startIndex) + cid.toString() + url.slice(stopIndex)
+  }
+}
+
+class Sink extends IPFS_Provider {
+  constructor(options){
+    super(options)
+  }
+  set url(url){
+    this._url = cid => typeof cid === 'string' ? // where cid is a CID, return url for /block/put
+        `https://tryipfs.io/api/v0/pin/rm?arg=${cid}` : `https://tryipfs.io/api/v0/block/put`;
   }
 }
 
@@ -111,8 +133,8 @@ class Data {
   static cache = new Datums(100);
 
   // 
-  static source = new IPFS_Provider({headers: {"Accept": "application/vnd.ipld.raw"}});
-  static sink = new IPFS_Provider({method: 'POST'});
+  static source = new Source({headers: {"Accept": "application/vnd.ipld.raw"}});
+  static sink = new Sink({method: 'POST'});
 
   // used when authenticating a block and requesting a cid from ipfs/block/put
   static codecForCID(cid){
@@ -197,9 +219,9 @@ class Data {
     }
     // calling sink.url() with string returns pin/add url
     return request(
-        this.sink.url(cid.toString()).replace('add', 'ls'), this.sink.options
+        this.sink.url(cid.toString()), this.sink.options
       )
-      .then(response => request(this.sink.url(cid.toString()).replace('add', 'rm'), this.sink.options))
+      .then(response => console.log(`unpinned ${cid.toString()}`))
       .catch(err => 
         console.error(`error unpinning ${cid.toString()}:`, err)
       )
@@ -249,13 +271,12 @@ console.log(`going to write this: `, this);
 console.log(`going to call ${Data.sink.url(this.#cid)} with options `, Data.sink.options);
     return request(
       // calling sink.url() with a cid returns a block/put url
-        Data.sink.url(this.#cid),
-        new mfdOpts([{
-          data: bytes,
-          type: "application/octet-stream",
-          'name': name
-        }], Data.sink.options)
-      )
+      `${Data.sink.url(this.#cid)}?cid-codec=${Data.codecForCID(this.#cid).name}&pin=true`,
+      new mfdOpts([{
+        data: bytes,
+        type: "application/octet-stream",
+        'name': name
+      }], Data.sink.options))
       .then(async response => {
 console.log(`block/put response is: `, response);
         const writeResponse = JSON.parse(response);
@@ -298,7 +319,6 @@ console.log(`block/put response is: `, response);
     links.map(link => file.addBlockSize(BigInt(link.Tsize)));
     const pbNode = pb.createNode(file.marshal(), links);
     return await new Data(pbNode, pb).writeBlock(name)
-    return topNode
   }
 }
 

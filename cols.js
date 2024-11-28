@@ -118,6 +118,7 @@ class COL_Node extends Data {
   async update(updates, keys=null){
     console.log(`updating ${this.name} ${keys?'ciphertext':'plaintext'} with: `, updates);
     const value = Object.assign({}, this.value);
+    // first update existing values
     for(let key of Object.keys(value)){
       if(Object.hasOwn(updates, key))
         value[key] = updates[key];
@@ -127,6 +128,7 @@ class COL_Node extends Data {
       }
       delete updates.key;
     }
+    // then add keys that appear for the first time on updates
     for(let key of Object.keys(updates))
       value[key] = updates[key];
     value['updated_at'] = new Date().toUTCString();
