@@ -28,7 +28,7 @@ class IPFS_Provider {
   set _url(url){
     this.#url = url;
   }
-  get url(){
+  get _url(){
     return this.#url
   }
 }
@@ -38,10 +38,12 @@ class Source extends IPFS_Provider {
     super(options)
   }
   set url(url){
-    const startIndex = url.indexOf('{cid}');
-    const stopIndex = startIndex + '{cid}'.length;
-
-    this._url = cid => url.slice(0, startIndex) + cid.toString() + url.slice(stopIndex)
+    const insertIndex = url.indexOf('.');
+    this._url = typeof url === 'boolean' ? false : cid => 
+      url.slice(0, insertIndex) + cid.toString() + url.slice(insertIndex)
+  }
+  get url(){
+    return this._url
   }
 }
 
@@ -50,8 +52,11 @@ class Sink extends IPFS_Provider {
     super(options)
   }
   set url(url){
-    this._url = cid => typeof cid === 'string' ? // where cid is a CID, return url for /block/put
-        `https://tryipfs.io/api/v0/pin/rm?arg=${cid}` : `https://tryipfs.io/api/v0/block/put`;
+    this._url = typeof url === 'boolean' ? false : cid => 
+      typeof cid === 'string' ? `${url}/pin/rm?arg=${cid}` : `${url}/block/put`;
+  }
+  get url(){
+    return this._url
   }
 }
 
@@ -218,11 +223,10 @@ class Data {
       return Promise.resolve(localStorage.removeItem(cid.toString()))
     }
     // calling sink.url() with string returns pin/add url
-    return request(
-        this.sink.url(cid.toString()), this.sink.options
-      )
+    return request(this.sink.url(cid.toString()), this.sink.options)
       .then(response => console.log(`unpinned ${cid.toString()}`))
       .catch(err => 
+        // catches an error that throws even when the pin is removed
         console.error(`error unpinning ${cid.toString()}:`, err)
       )
   }
@@ -283,19 +287,6 @@ console.log(`block/put response is: `, response);
         if(DEBUG) console.log(`wrote ${name} at ${writeResponse.Key}`);
         if(!CID.equals(this.#cid, CID.parse(writeResponse.Key)))
           throw new Error(`block CID: ${this.#cid.toString()} does not match write CID: ${writeResponse.Key}`)
-
-        /*request(Data.sink.url(writeResponse.Key), Data.sink.options).then(response => {
-          const pinLsResponse = JSON.parse(response);
-          if(Object.hasOwn(pinLsResponse, 'Type') && pinLsResponse.Type === 'error')
-            request(Data.sink.url(writeResponse.Key).replace('ls', 'add'), Data.sink.options);
-        }).catch(err => console.warn(`pinning ${writeResponse.Key} caused error: `, err));
-        if(deleteLast)
-          request(Data.sink.url(lastAddress), Data.sink.options).then(response => {
-            const pinLsResponse = JSON.parse(response);
-            if(Object.hasOwn(pinLsResponse, 'Type') && pinLsResponse.Type === 'error')
-              request(Data.sink.url(lastAddress).replace('ls', 'rm'), Data.sink.options);
-          }).catch(err => console.warn(`pinning ${writeResponse.Key} caused error: `, err));
-        */
       })
       .then(response => this)
       .catch(error => console.error(`error persisting ${name}: `, error))
@@ -322,4 +313,10 @@ console.log(`block/put response is: `, response);
   }
 }
 
-export {Data, raw, request};
+class Image extends Data {
+  constructor(){
+    super(...arguments, raw)
+  }
+}
+
+export {Data, Image, request};
