@@ -1,4 +1,4 @@
-import {Asset, Operation} from 'stellar-base';
+import {Asset, Operation} from '@stellar/stellar-base';
 import * as Digest from 'multiformats/hashes/digest';
 import {sha256} from 'multiformats/hashes/sha2';
 import * as raw from 'multiformats/codecs/raw';

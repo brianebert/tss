@@ -1,6 +1,6 @@
 //import {default as wallet} from "@stellar/freighter-api";
 import freighterApi from "@stellar/freighter-api";
-import {Keypair, StrKey} from "stellar-base";
+import {Keypair, StrKey} from "@stellar/stellar-base";
 import {AccountWatcher, AccountDigger} from './apiReaders.js';
 import {COL_Node, request} from './cols.js';
 import {StellarAccount} from './stellar.js';
@@ -9,7 +9,7 @@ import * as Sodium from './na.js';
 const wallet = freighterApi;
 
 // repository for keys derived to automate encryption, decryption and block chain use
-export class SigningAccount extends StellarAccount {
+class SigningAccount extends StellarAccount {
   #canSign; // true when have presented secret key associated with account.id or have signed with wallet
   #ec25519; // hex string for asymetric encryption
   #ed25519; // a Stellar Keypair for automated signing
@@ -180,3 +180,5 @@ console.log(`calling wallet.signTransaction next`);
       throw new Error(`Freighter account does not match Signing Account`)
   }
 }
+
+export {SigningAccount, StellarAccount};

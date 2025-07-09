@@ -90,6 +90,10 @@ class COL_Node extends Data {
     }
     return recurse(cid, fn, keys)
   }
+/* The following functions alter leaf nodes. All terminate with a call 
+ * to COL_Node.fizz(), which percolates hash changes through parents
+ * generation by generation.
+ */
 
   // remove self from graph
   async delete(keys){

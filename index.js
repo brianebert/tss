@@ -1,4 +1,4 @@
-import {SigningAccount} from "./signing.js";
+/*import {SigningAccount} from "./signing.js";
 import {Encrypted_Node} from "./encrypted.js";
 import {COL_Node} from "./cols.js";
 import {Data, Image} from "./data.js";
@@ -9,4 +9,8 @@ export {
 	COL_Node, 
 	Image,
 	Data
-}
+}*/
+
+import {SponsoredAccount} from "./sponsored.js";
+
+export {SponsoredAccount};

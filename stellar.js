@@ -1,7 +1,7 @@
 import {Account, Asset, Keypair, Memo, MemoHash,
         MemoText, MemoID, Networks, Operation, 
         StrKey, TimeoutInfinite, Transaction, 
-        TransactionBuilder} from "stellar-base";
+        TransactionBuilder} from "@stellar/stellar-base";
 import * as wallet from "@stellar/freighter-api";
 import * as Digest from 'multiformats/hashes/digest';
 import {sha256} from 'multiformats/hashes/sha2';
