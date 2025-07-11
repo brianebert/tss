@@ -100,8 +100,15 @@ class Data {
 
   get links(){
     const links = {};
-    for(const [name, cid] of this.#block.links())
-      links[name] = cid;
+    // will look for links in general data. #block.links() looks for CIDs
+    //for(const [name, cid] of this.#block.links())
+      //links[name] = cid;
+    for(const [key, value] of Object.entries(this.value)){
+      const [id, index] = value.split(':');
+      const i = parseInt(index);
+      if(StrKey.isValidEd25519PublicKey(id) && i >= 0)
+        links[key] = value;
+    }
     return links
   }
 

@@ -1,46 +1,60 @@
-import {Operation} from '@stellar/stellar-base';
+import {Keypair, Operation} from '@stellar/stellar-base';
 import {StellarAccount} from './signing.js';
 
-class SponsoredAccount extends StellarAccount{
+export class ContentPointer extends StellarAccount{
     #ready; #account;
-    constructor(sponsor, kp){
-        if(!sponsor.canSign)
-          throw new Error(`SponsoredAccount requires valid signing account as arguement.`)
+    constructor(id=null, address=null, sponsor=null){
+        if(StrKey.isValidEd25519PublicKey(id)){
+            var kp = Keypair.fromPublicKey(id);
+            var ready = async () => await StellarAccount.load(id);
+        }
+        else if(!!sponsor && !!address){
+            var kp = Keypair.random();
+            var ready = sponsor.tx(
+                [
+                    Operation.beginSponsoringFutureReserves({
+                        sponsoredId: this.id
+                    }),
+                    Operation.createAccount({
+                        destination: this.id,
+                        startingBalance: '0'
+                    }),
+                    Operation.manageData({
+                        name: 'index',
+                        value: '0',
+                        source: this.id
+                    }),
+                    Operation.manageData({
+                        name: 'address',
+                        value: address,
+                        source: this.id
+                    }),
+                    Operation.setOptions({
+                        signer: {
+                            ed25519PublicKey: sponsor.id,
+                            weight: 255
+                        },
+                        source: this.id
+                    }),
+                    Operation.endSponsoringFutureReserves({
+                        source: this.id
+                    })
+                ],
+                false,
+                [kp]
+            )
+            .then(async () => this.#account = await StellarAccount.load(kp.publicKey()));
+        }
+        else
+            throw new Error(`ContentPointer requires valid address or signing account to create.`)
         super(kp.publicKey());
-        this.#ready = sponsor.tx(
-            [
-                Operation.beginSponsoringFutureReserves({
-                    sponsoredId: this.id
-                }),
-                Operation.createAccount({
-                    destination: this.id,
-                    startingBalance: '0'
-                }),
-                Operation.manageData({
-                    name: 'index',
-                    value: '0',
-                    source: this.id
-                }),
-                Operation.manageData({
-                    name: 'address',
-                    value: 'bafybeigdyrzt5s27qndey5kht3i7q667w7nzffoax6yggs3z3xzzhmdrzi',
-                    source: this.id
-                }),
-                Operation.setOptions({
-                    signer: {
-                        ed25519PublicKey: sponsor.id,
-                        weight: 255
-                    },
-                    source: this.id
-                }),
-                Operation.endSponsoringFutureReserves({
-                    source: this.id
-                })
-            ],
-            false,
-            [kp]
-        )
-        .then(async () => this.#account = await StellarAccount.load(kp.publicKey()));
+        this.#ready = ready;
+    }
+
+    canSignMe(sponsor){
+        if(Array.from(this.#account.signers).filter(signer => signer.key === sponsor.id).length !== 1)
+            throw new Error(`ContentPointer ${this.id} is not sponsored by ${sponsor.id}`);
+        return true
     }
 
     // All getters return promises

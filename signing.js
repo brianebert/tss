@@ -1,8 +1,8 @@
 //import {default as wallet} from "@stellar/freighter-api";
 import freighterApi from "@stellar/freighter-api";
 import {Keypair, StrKey} from "@stellar/stellar-base";
-import {AccountWatcher, AccountDigger} from './apiReaders.js';
-import {COL_Node, request} from './cols.js';
+//import {AccountWatcher, AccountDigger} from './apiReaders.js';
+//import {COL_Node, request} from './cols.js';
 import {StellarAccount} from './stellar.js';
 import * as Sodium from './na.js';
 
