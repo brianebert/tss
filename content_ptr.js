@@ -1,4 +1,4 @@
-import {Keypair, Operation} from '@stellar/stellar-base';
+import {Keypair, Operation, StrKey} from '@stellar/stellar-base';
 import {StellarAccount} from './signing.js';
 
 export class ContentPointer extends StellarAccount{
@@ -6,49 +6,50 @@ export class ContentPointer extends StellarAccount{
     constructor(id=null, address=null, sponsor=null){
         if(StrKey.isValidEd25519PublicKey(id)){
             var kp = Keypair.fromPublicKey(id);
-            var ready = async () => await StellarAccount.load(id);
+            var create = false;
         }
         else if(!!sponsor && !!address){
             var kp = Keypair.random();
-            var ready = sponsor.tx(
-                [
-                    Operation.beginSponsoringFutureReserves({
-                        sponsoredId: this.id
-                    }),
-                    Operation.createAccount({
-                        destination: this.id,
-                        startingBalance: '0'
-                    }),
-                    Operation.manageData({
-                        name: 'index',
-                        value: '0',
-                        source: this.id
-                    }),
-                    Operation.manageData({
-                        name: 'address',
-                        value: address,
-                        source: this.id
-                    }),
-                    Operation.setOptions({
-                        signer: {
-                            ed25519PublicKey: sponsor.id,
-                            weight: 255
-                        },
-                        source: this.id
-                    }),
-                    Operation.endSponsoringFutureReserves({
-                        source: this.id
-                    })
-                ],
-                false,
-                [kp]
-            )
-            .then(async () => this.#account = await StellarAccount.load(kp.publicKey()));
+            var create = true;
         }
         else
-            throw new Error(`ContentPointer requires valid address or signing account to create.`)
+            throw new Error(`ContentPointer requires valid Stellar Id or signing account to create.`)
         super(kp.publicKey());
-        this.#ready = ready;
+        this.#ready = create ? sponsor.tx(
+            [
+                Operation.beginSponsoringFutureReserves({
+                    sponsoredId: this.id
+                }),
+                Operation.createAccount({
+                    destination: this.id,
+                    startingBalance: '0'
+                }),
+                Operation.manageData({
+                    name: 'index',
+                    value: '0',
+                    source: this.id
+                }),
+                Operation.manageData({
+                    name: 'address',
+                    value: address,
+                    source: this.id
+                }),
+                Operation.setOptions({
+                    signer: {
+                        ed25519PublicKey: sponsor.id,
+                        weight: 255
+                    },
+                    source: this.id
+                }),
+                Operation.endSponsoringFutureReserves({
+                    source: this.id
+                })
+            ],
+            false,
+            [kp]
+        )
+        .then(async () => this.#account = await StellarAccount.load(kp.publicKey())) :
+        StellarAccount.load(id);
     }
 
     canSignMe(sponsor){
@@ -78,13 +79,18 @@ export class ContentPointer extends StellarAccount{
         )
     }
 
-    static async merge(sponsor, id){
-        const sponsee = await StellarAccount.load(id);
-        if(Array.from(sponsee.signers).filter(signer => signer.key === sponsor.id).length !== 1)
-            throw new Error(`Sponsored account ${id} is not sponsored by ${sponsor.id}`);
-
-        return sponsor.tx(
-            [
+    static async merge(sponsor, ids){
+        let ops = [];
+        if(ids.length === 0)
+            return Promise.resolve({id: "NA", successful: true});
+        if(ids.length > 33)
+            throw new Error(`Cannot merge more than 33 ContentPointers at once`);
+        for(const id of ids){
+            const sponsee = await StellarAccount.load(id);
+            if(Array.from(sponsee.signers).filter(signer => signer.key === sponsor.id).length !== 1)
+                throw new Error(`Account ${id} is not sponsored by ${sponsor.id}`);
+            console.log(`merging ContentPointer ${id} into sponsor: ${sponsor.id}`);
+            ops.push(
                 Operation.manageData({
                     name: 'index',
                     value: null,
@@ -99,9 +105,42 @@ export class ContentPointer extends StellarAccount{
                     destination: sponsor.id,
                     source: id
                 })
-            ]
-        )
-        .then(() => console.log(`merged sponsored account: ${id} into sponsor: ${sponsor.id}`));
+            );
+        }
+        return sponsor.tx(ops).then(result => {
+            console.log(`merge result is: `, result);
+            return result;
+        });
+    }
+
+    static async update(sponsor, updates){
+        const ops = []; const merges = [];
+        for(const [ptr, value] of updates){
+            console.log(`updating ${ptr.id} with value: `, value);
+            if(!!value){
+                ops.push(
+                    Operation.manageData({
+                        name: 'index',
+                        value: (parseInt(await ptr.index) + 1).toString(),
+                        source: ptr.id
+                    }),
+                    Operation.manageData({
+                        name: 'address',
+                        value: value.toString(),
+                        source: ptr.id
+                    })
+                );
+            }
+            else{
+                merges.push(ptr.id);
+            }
+        }
+        return Promise.all([sponsor.tx(ops), ContentPointer.merge(sponsor, merges)])
+        .then(([result, mergeResult]) => {
+            console.log(`update result is: `, result);
+            console.log(`merge result is: `, mergeResult);
+            return result;
+        })
     }
 }
 

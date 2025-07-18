@@ -128,11 +128,11 @@ console.log(`walletConnection is ${walletConnection} and wallet public key is ${
 
     // this gets called at the end. it calls libsodium
     function theThen(signedXdr){
-console.log(`theThen got signedXdr: `, signedXdr);
+//console.log(`theThen got signedXdr: `, signedXdr);
       const sig = SigningAccount.sigFromXDR(signedXdr);
       return Sodium.keysFromSig(sig, constants)
         .then(keys => {
-console.log(`got keys from sodium: `, keys);
+//console.log(`got keys from sodium: `, keys);
           //console.log(`derived keys: `, keys);
           this.#ec25519 = keys.ec25519;
           this.#shareKX = keys.shareKX;

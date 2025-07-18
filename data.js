@@ -1,4 +1,5 @@
-import * as Block from 'multiformats/block'
+import {StrKey} from '@stellar/stellar-base';
+import * as Block from 'multiformats/block';
 import {CID} from 'multiformats/cid';
 import * as cbor from '@ipld/dag-cbor';
 import * as json from '@ipld/dag-json';
@@ -84,8 +85,8 @@ class Data {
     else {
       this.value = data;
     }
-    console.log(`this Data.source is `, Data.source);
-    console.log(`this Data.sink is `, Data.sink);
+    //console.log(`this Data.source is `, Data.source.url('QmZ4tDuoMhJ15pT2o915pT2o915pT2o915pT2o915pT2o9'));
+    //console.log(`this Data.sink is `, Data.sink.url('QmZ4tDuoMhJ15pT2o915pT2o915pT2o915pT2o915pT2o9'));
   }
 
   // access away
@@ -103,12 +104,17 @@ class Data {
     // will look for links in general data. #block.links() looks for CIDs
     //for(const [name, cid] of this.#block.links())
       //links[name] = cid;
+    console.log(`finding links for ${this.value.colName}`);
     for(const [key, value] of Object.entries(this.value)){
-      const [id, index] = value.split(':');
-      const i = parseInt(index);
-      if(StrKey.isValidEd25519PublicKey(id) && i >= 0)
-        links[key] = value;
+      //console.log(`\tkey is ${key} and value is ${value}`);
+      if(typeof value === 'string'){
+        const [id, index] = value.split(':');
+        const i = parseInt(index);
+        if(StrKey.isValidEd25519PublicKey(id) && i >= 0)
+          links[key] = value;
+      }
     }
+    console.log(`links are: `, links);
     return links
   }
 
@@ -240,7 +246,7 @@ class Data {
 
   async write(name='', keys=null, cache=false, deleteLast=true){
     await this.#ready;
-console.log(`going to write this: `, this);
+console.log(`going to write this: `, this.value);
     return this.#block.bytes.length > BLOCK_SIZE ?
       this.writeChunked(name, keys, cache, deleteLast) :
       this.writeBlock(name, keys, cache, deleteLast)

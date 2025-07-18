@@ -28,11 +28,26 @@ class COL_Node extends Data {
     return this?.value.colName
   }
 
+  static async fromContentPointer(ptrId, index, keys=null){
+    const contentPointer = new ContentPointer(ptrId);
+    const [cid, currentIndex] = await Promise.all([
+      contentPointer.address, contentPointer.index
+    ]);
+    const data = await this.read(cid, keys);
+    const node = new COL_Node(data.block);
+    node.#contentPointer = contentPointer;
+    return node;
+  }
+
   // percolate hash changes through parents generation by generation
   static async fizz(nodes, keys, sponsor=null, contentPointers=[]){
     if(nodes.length === 1 && nodes[0].parents.length === 0){
       if(sponsor){
-        console.log(`now write out content pointers`, contentPointers);
+        console.log(`now write ${contentPointers.length} content pointers`);
+        for(const [ptr, cid] of contentPointers)
+          console.log(`\t${ptr.id}:${await ptr.index} -> ${cid}`);
+        const result = await ContentPointer.update(sponsor, contentPointers);
+        console.log(`update result is: `, result);
       }
       return Promise.resolve(nodes[0])
     }
@@ -49,24 +64,31 @@ class COL_Node extends Data {
                                 value: Object.assign({}, parent.value)
                               })
                             );
+console.log(`have reduced parents to: `, parentValues);
     // update copies' link values
-    for(let i=0; i < nodes.length; i++)
+    for(let i=0; i < nodes.length; i++){
+console.log(`fizzing node `, nodes[i].value)
       for(let j=0; j < parentValues.length; j++){
+console.log(`${nodes[i].name} has parent ${parentValues[j].name} with value: `, parentValues[j].value);
         parentValues[j].value[`${parentValues[j].name}_last`] = CID.parse(parentValues[j].id); 
         // are you my parent? then update my link.
         if(Object.keys(parentValues[j].value).includes(nodes[i].name))
-          if(nodes[i].cid === undefined)
+          if(nodes[i].cid === undefined || nodes[i].#contentPointer === undefined)
             delete parentValues[j].value[nodes[i].name];
           else {
-            const id = await nodes[i].#contentPointer.address;
-            const index = await nodes[i].#contentPointer.index;
-            parentValues[j].value[nodes[i].name] = `${id}:${index}`;
+            //const id = nodes[i].#contentPointer.id;
+            const index = (parseInt(await nodes[i].#contentPointer.index) + 1).toString();
+//console.log(`\twriting${parentValues[j].name} link ${nodes[i].name} ${id}:${index}`);
+            parentValues[j].value[nodes[i].name] = `${nodes[i].#contentPointer.id}:${index}`;
           }
         parentValues[j].value['last_modified'] = new Date().toUTCString();
       }
+    }
     deDuped.forEach(parent => {
+console.log(`checking ${parent.name}: `, parent.value);
       // calls Data instance's value(v) setter that hashes a new block from v
       parent.value = parentValues.filter(value => value.id === parent.cid.toString()).pop().value;
+console.log(`now ${parent.name} is: `, parent.value);
     });
     // blocks aren't encrypted until written
     return Promise.all(Array.from(deDuped).map(parent => parent.write(parent.name, keys)))
@@ -105,8 +127,7 @@ class COL_Node extends Data {
     return recurse(cid, fn, keys)
   }*/
 
-    static async traverse(cptr, fn=()=>{}, keys=null){
-      const context = this;
+    async traverse(fn=()=>{}, keys=null){
       const haveTraversed = new Set();
       async function recurse(cptr, fn, keys, depth=0){
         const [ptrId, index] = cptr.split(':');
@@ -115,14 +136,15 @@ class COL_Node extends Data {
           contentPointer.address, contentPointer.index
         ]);
         console.log(`have read ${cid}:${currentIndex} for ${ptrId}:${index}`);
-        return await context.read(cid, keys).then(async instance => {
+        return await COL_Node.fromContentPointer(ptrId, index, keys).then(async instance => {
           if(!haveTraversed.has(cptr)){
             haveTraversed.add(cptr);
             for(const link of Object.keys(instance.links))
               if(!link.endsWith('_last')){       
                 const subGraph = await recurse(instance.links[link], fn, keys, depth + 1);
-                instance.value[link] = subGraph.#contentPointer.id;
-                if(!subGraph.parents.map(parent => parent.#contentPointer.id).includes(instance.#contentPointer.id))
+console.log(`subGraph ${subGraph.name} ${subGraph.cid.toString()} has value: `, subGraph.value);
+                instance.value[link] = subGraph.#contentPointer.id + ':' + (await subGraph.#contentPointer.index);
+                if(!subGraph.parents.map(parent => parent.cid.toString()).includes(instance.cid.toString()))
                   subGraph.parents.push(instance);
               }
             // fn must always return a promise!!
@@ -131,6 +153,7 @@ class COL_Node extends Data {
           return instance
         })
       }
+      const cptr = this.#contentPointer.id + ':' + (await this.#contentPointer.index);
       return recurse(cptr, fn, keys)
     }
 
@@ -147,7 +170,7 @@ class COL_Node extends Data {
     console.log(`deleting ${this.name}`)
     Data.rm(this.cid);
     this.cid = undefined;
-    return COL_Node.fizz([this], keys, sponsor, [this.#contentPointer])
+    return COL_Node.fizz([this], keys, sponsor, [[this.#contentPointer]])
   }
 
   // make node a child of self
@@ -158,7 +181,7 @@ class COL_Node extends Data {
     let value = Object.assign({}, this.value);
     //
     for(const node of nodes){
-      value[node.name] = node.#pointerAddress;
+      value[node.name] = `${node.#contentPointer.id}:${await node.#contentPointer.index}`;
       node.parents.push(this);
     }
     this.value = value;
@@ -166,6 +189,7 @@ class COL_Node extends Data {
                .then(async () => {
                 this.#contentPointer = new ContentPointer(null, this.cid.toString(), sponsor);
                 await this.#contentPointer.ready;
+    console.log(`now fizzing ${this.name} with ${this.#contentPointer.id}`);
                 return COL_Node.fizz([this], keys, sponsor)
                })
   }
@@ -178,10 +202,8 @@ class COL_Node extends Data {
     for(let key of Object.keys(value)){
       if(Object.hasOwn(updates, key))
         value[key] = updates[key];
-      else {
-        //Data.cache.remove(value[key]);  Need Data.read() to cache before calling this.
+      if(!value[key])
         delete value[key];
-      }
       delete updates.key;
     }
     // then add keys that appear for the first time on updates
@@ -192,7 +214,7 @@ class COL_Node extends Data {
     this.value = value;
     return this.write(this.name, keys)
                .then(() => COL_Node.fizz(
-                  [this], keys, sponsor, [this.#contentPointer, this.cid]
+                  [this], keys, sponsor, [[this.#contentPointer, this.cid]]
                 ))
   }
 }
